@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Download, Image } from "lucide-react";
+import Image from "next/image";
+import { Copy, Check, Download, Image as ImageIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,10 +104,13 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
 
             {imageUrl && (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-100 bg-white p-4">
-                <img
+                <Image
                   src={imageUrl}
                   alt={`QR de ${formatFullName(asistente)}`}
-                  className="h-48 w-48 rounded-lg"
+                  width={192}
+                  height={192}
+                  unoptimized
+                  className="rounded-lg"
                 />
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleDownload}>
@@ -118,7 +122,7 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
                     size="sm"
                     onClick={() => handleCopy(imageUrl)}
                   >
-                    <Image className="mr-2 h-4 w-4" />
+                    <ImageIcon className="mr-2 h-4 w-4" />
                     Copiar link de imagen
                   </Button>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, MessageCircle } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
@@ -137,10 +138,13 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
               {current.qr_token ? (
                 <>
                   <div className="flex justify-center rounded-xl border border-slate-100 bg-white p-4">
-                    <img
+                    <Image
                       src={imageUrl}
                       alt={`QR de ${formatFullName(current)}`}
-                      className="h-48 w-48 rounded-lg"
+                      width={192}
+                      height={192}
+                      unoptimized
+                      className="rounded-lg"
                     />
                   </div>
 
