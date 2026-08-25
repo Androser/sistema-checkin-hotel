@@ -29,22 +29,7 @@ export function useAsistentes() {
 
   useEffect(() => {
     fetchAsistentes();
-
-    const channel = supabase
-      .channel("asistentes_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "asistentes" },
-        () => {
-          fetchAsistentes();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchAsistentes, supabase]);
+  }, [fetchAsistentes]);
 
   return { asistentes, loading, error, refetch: fetchAsistentes };
 }
