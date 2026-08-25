@@ -63,7 +63,11 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
   };
 
   const whatsappText = encodeURIComponent(
-    `Hola ${asistente.nombres}, este es tu código QR para el check-in del evento: ${qrLink}`
+    `Hola ${formatFullName(asistente)},\n\n` +
+      `Este es tu código de acceso para el evento hotelero. ` +
+      `Abre el enlace, guarda el QR en pantalla y muéstralo al personal al llegar a la entrada:\n\n` +
+      `${qrLink}\n\n` +
+      `No compartas este enlace con otras personas.`
   );
 
   return (

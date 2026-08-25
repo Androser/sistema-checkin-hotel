@@ -46,7 +46,11 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
   const handleOpenWhatsApp = () => {
     if (!current || !qrLink) return;
     const text = encodeURIComponent(
-      `Hola ${current.nombres}, este es tu código QR para el check-in del evento: ${qrLink}`
+      `Hola ${formatFullName(current)},\n\n` +
+        `Este es tu código de acceso para el evento hotelero. ` +
+        `Abre el enlace, guarda el QR en pantalla y muéstralo al personal al llegar a la entrada:\n\n` +
+        `${qrLink}\n\n` +
+        `No compartas este enlace con otras personas.`
     );
     const phone = (current.celular || "").replace(/\D/g, "");
     window.open(`https://wa.me/${phone}?text=${text}`, "_blank", "noopener,noreferrer");
