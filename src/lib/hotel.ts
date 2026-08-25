@@ -18,6 +18,22 @@ export const HOTEL_INFO = {
   ],
 };
 
+const EMOJIS = {
+  wave: "\u{1F44B}",
+  party: "\u{1F389}",
+  hotel: "\u{1F3E8}",
+  pin: "\u{1F4CD}",
+  link: "\u{1F517}",
+  warning: "\u{26A0}\u{FE0F}",
+  phone: "\u{1F4F1}",
+  person: "\u{1F464}",
+  people: "\u{1F465}",
+  man: "\u{1F468}",
+  woman: "\u{1F469}",
+  hands: "\u{1F64C}",
+  divider: "\u{2500}".repeat(13),
+};
+
 export function buildWhatsAppMessage(nombreCompleto: string, qrLink: string) {
   return (
     `Hola ${nombreCompleto},\n\n` +
@@ -43,15 +59,16 @@ export function buildCompaniaWhatsAppMessage({
   participantes: Asistente[];
   link: string;
 }) {
+  const e = EMOJIS;
   const nombresConsejeros = consejeros.map(formatFullName).join(" y ");
 
   return (
-    `¡Hola! 👋\n\n` +
+    `${e.wave} ¡Hola!\n\n` +
     `Te invitamos a unirte al grupo de WhatsApp de la *Compañía ${numero}* de la ${EVENT_INFO.nombre}.\n\n` +
-    `👤 Consejeros: ${nombresConsejeros || "Por definir"}\n` +
-    `👥 Participantes: ${participantes.length}\n\n` +
-    `🔗 Únete aquí:\n${link}\n\n` +
-    `¡Es importante unirse para recibir toda la información del evento! 🙌`
+    `${e.person} Consejeros: ${nombresConsejeros || "Por definir"}\n` +
+    `${e.people} Participantes: ${participantes.length}\n\n` +
+    `${e.link} Únete aquí:\n${link}\n\n` +
+    `¡Es importante unirse para recibir toda la información del evento! ${e.hands}`
   );
 }
 
@@ -65,16 +82,41 @@ export function buildWhatsAppMessageWithCompania(
     link: string;
   }
 ) {
-  const base = buildWhatsAppMessage(nombreCompleto, qrLink);
-  if (!compania?.link) return base;
+  const e = EMOJIS;
 
-  const companiaMessage = buildCompaniaWhatsAppMessage(compania);
-  return (
-    `${base}\n\n` +
-    `─────────────────────\n\n` +
-    `📱 *Información de tu compañía:*\n\n` +
-    `${companiaMessage}`
-  );
+  let message =
+    `Hola ${nombreCompleto} ${e.wave}\n\n` +
+    `${e.party} ${EVENT_INFO.nombre}\n` +
+    `${e.hotel} Hotel: ${HOTEL_INFO.nombre}\n` +
+    `${e.pin} ${HOTEL_INFO.direccion}\n\n` +
+    `${e.link} Tu código QR:\n${qrLink}\n` +
+    `${e.warning} *Importante:* ingresa tu cédula en el link para ver y descargar el QR.\n\n`;
+
+  if (compania?.link) {
+    const nombresConsejeros = compania.consejeros
+      .map(formatFullName)
+      .join(" y ");
+    const hombres = compania.participantes.filter(
+      (p) => (p.sexo || "").toLowerCase() === "m"
+    ).length;
+    const mujeres = compania.participantes.filter(
+      (p) => (p.sexo || "").toLowerCase() === "f"
+    ).length;
+
+    message +=
+      `${e.divider}\n\n` +
+      `${e.phone} *Tu compañía: Compañía ${compania.numero}*\n\n` +
+      `${e.person} Consejeros: ${nombresConsejeros || "Por definir"}\n` +
+      `${e.people} Participantes: ${compania.participantes.length}` +
+      (hombres || mujeres
+        ? ` (${e.man} ${hombres} hombres · ${e.woman} ${mujeres} mujeres)`
+        : "") +
+      `\n${e.link} Grupo WhatsApp:\n${compania.link}\n\n`;
+  }
+
+  message += "No compartas este mensaje.";
+
+  return message;
 }
 
 export function getWhatsAppShareUrl(message: string) {
