@@ -10,15 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import { SITE_URL } from "@/lib/site";
-import { buildWhatsAppMessage } from "@/lib/hotel";
+import { buildWhatsAppMessageWithCompania } from "@/lib/hotel";
 
 interface BulkSendModalProps {
   open: boolean;
   onClose: () => void;
   asistentes: Asistente[];
+  allAsistentes: Asistente[];
 }
 
-export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps) {
+export function BulkSendModal({ open, onClose, asistentes, allAsistentes }: BulkSendModalProps) {
   const [index, setIndex] = useState(0);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
 
@@ -27,16 +28,44 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
   const progress = total > 0 ? Math.round(((sentIds.size) / total) * 100) : 0;
 
   const siteUrl = SITE_URL;
-  const { qrLink, imageUrl } = useMemo(() => {
-    if (!current?.qr_token) return { qrLink: "", imageUrl: "" };
+  const { qrLink, imageUrl, companiaInfo } = useMemo(() => {
+    if (!current?.qr_token) return { qrLink: "", imageUrl: "", companiaInfo: undefined };
     const displayName = encodeURIComponent(
       `${current.nombres} ${current.apellidos}`.trim()
     );
+
+    const companiaNumero = current.compania_numero;
+    const companiaLink = companiaNumero
+      ? allAsistentes.find(
+          (a) =>
+            a.compania_numero === companiaNumero && a.link_whatsapp
+        )?.link_whatsapp
+      : undefined;
+
+    const companiaInfo =
+      companiaNumero && companiaLink
+        ? {
+            numero: companiaNumero,
+            link: companiaLink,
+            consejeros: allAsistentes.filter(
+              (a) =>
+                a.rol === "consejero" && a.compania_numero === companiaNumero
+            ),
+            participantes: allAsistentes.filter(
+              (a) =>
+                a.rol !== "consejero" &&
+                a.rol !== "coordinador" &&
+                a.compania_numero === companiaNumero
+            ),
+          }
+        : undefined;
+
     return {
       qrLink: `${siteUrl}/qr?token=${current.qr_token}`,
       imageUrl: `/api/qr?token=${current.qr_token}&n=${displayName}`,
+      companiaInfo,
     };
-  }, [current, siteUrl]);
+  }, [current, siteUrl, allAsistentes]);
 
   useEffect(() => {
     if (open) {
@@ -47,9 +76,19 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
 
   const handleOpenWhatsApp = () => {
     if (!current || !qrLink) return;
-    const text = encodeURIComponent(buildWhatsAppMessage(formatFullName(current), qrLink));
+    const text = encodeURIComponent(
+      buildWhatsAppMessageWithCompania(
+        formatFullName(current),
+        qrLink,
+        companiaInfo
+      )
+    );
     const phone = (current.celular || "").replace(/\D/g, "");
-    window.open(`https://wa.me/${phone}?text=${text}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://wa.me/${phone}?text=${text}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const handleMarkSent = () => {

@@ -497,6 +497,7 @@ export default function AsistentesPage() {
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
         asistentes={selectedAsistentes}
+        allAsistentes={asistentes}
       />
 
       {/* Modal de confirmación de eliminación */}

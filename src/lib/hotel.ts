@@ -1,3 +1,6 @@
+import { Asistente } from "./types";
+import { formatFullName } from "./utils";
+
 export const EVENT_INFO = {
   nombre: "Convención JA 2026",
 };
@@ -29,9 +32,6 @@ export function buildWhatsAppMessage(nombreCompleto: string, qrLink: string) {
   );
 }
 
-import { Asistente } from "./types";
-import { formatFullName } from "./utils";
-
 export function buildCompaniaWhatsAppMessage({
   numero,
   consejeros,
@@ -52,6 +52,28 @@ export function buildCompaniaWhatsAppMessage({
     `👥 Participantes: ${participantes.length}\n\n` +
     `🔗 Únete aquí:\n${link}\n\n` +
     `¡Es importante unirse para recibir toda la información del evento! 🙌`
+  );
+}
+
+export function buildWhatsAppMessageWithCompania(
+  nombreCompleto: string,
+  qrLink: string,
+  compania?: {
+    numero: number;
+    consejeros: Asistente[];
+    participantes: Asistente[];
+    link: string;
+  }
+) {
+  const base = buildWhatsAppMessage(nombreCompleto, qrLink);
+  if (!compania?.link) return base;
+
+  const companiaMessage = buildCompaniaWhatsAppMessage(compania);
+  return (
+    `${base}\n\n` +
+    `─────────────────────\n\n` +
+    `📱 *Información de tu compañía:*\n\n` +
+    `${companiaMessage}`
   );
 }
 
