@@ -12,6 +12,7 @@ import {
   TIPOS_ALOJAMIENTO,
   SEXOS,
   GRUPOS_SANGUINEOS,
+  ROLES,
 } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import {
@@ -41,6 +42,9 @@ const initialForm = {
   sexo: "",
   celular: "",
   correo: "",
+  rol: "",
+  rol_descripcion: "",
+  compania_numero: "",
   tipo_alojamiento: "",
   numero_habitacion: "",
   cama_asignada: "",
@@ -97,6 +101,9 @@ export function AsistenteModal({
           sexo: asistente.sexo || "",
           celular: asistente.celular || "",
           correo: asistente.correo || "",
+          rol: asistente.rol || "",
+          rol_descripcion: asistente.rol_descripcion || "",
+          compania_numero: asistente.compania_numero?.toString() || "",
           tipo_alojamiento: asistente.tipo_alojamiento || "",
           numero_habitacion: asistente.numero_habitacion || "",
           cama_asignada: asistente.cama_asignada || "",
@@ -125,7 +132,11 @@ export function AsistenteModal({
     setSaving(true);
     setLocalError(null);
     try {
-      await onSave(form);
+      const data: Record<string, any> = { ...form };
+      if (data.compania_numero) {
+        data.compania_numero = parseInt(data.compania_numero, 10);
+      }
+      await onSave(data);
     } finally {
       setSaving(false);
     }
@@ -305,6 +316,51 @@ export function AsistenteModal({
             </div>
             {field("Celular", "celular", "tel")}
             {field("Correo electrónico", "correo", "email")}
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <h4 className="mb-3 text-sm font-semibold text-slate-900">
+              Rol y compañía
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">Rol</label>
+                <Select name="rol" value={form.rol} onChange={handleChange}>
+                  <option value="">Seleccionar</option>
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {(form.rol === "consejero" || form.rol === "participante") && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Compañía
+                  </label>
+                  <Select
+                    name="compania_numero"
+                    value={form.compania_numero}
+                    onChange={handleChange}
+                  >
+                    <option value="">Sin compañía</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+                      <option key={c} value={String(c)}>
+                        Compañía {c}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+
+              {form.rol === "coordinador" && (
+                <>
+                  {field("Descripción del rol", "rol_descripcion")}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="border-t border-slate-100 pt-4">
