@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { formatFullName } from "@/lib/utils";
 
@@ -26,7 +27,13 @@ export default async function QrPage({ searchParams }: QrPageProps) {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
-  const imageUrl = `${siteUrl}/api/qr?token=${token}`;
+  const displayName = encodeURIComponent(formatFullName(asistente));
+  const scanUrl = `${siteUrl}/escaner?token=${token}&n=${displayName}`;
+  const qrDataUrl = await QRCode.toDataURL(scanUrl, {
+    width: 400,
+    margin: 2,
+    type: "image/png",
+  });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
@@ -54,7 +61,7 @@ export default async function QrPage({ searchParams }: QrPageProps) {
 
         <div className="mb-6 flex justify-center rounded-2xl border border-slate-100 bg-white p-4">
           <Image
-            src={imageUrl}
+            src={qrDataUrl}
             alt={`QR de ${formatFullName(asistente)}`}
             width={280}
             height={280}
