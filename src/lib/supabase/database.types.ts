@@ -25,6 +25,7 @@ export interface Database {
           rol_descripcion: string | null;
           compania_numero: number | null;
           compania_pareja_id: string | null;
+          link_whatsapp: string | null;
           barrio: string | null;
           tipo_alojamiento: string | null;
           numero_habitacion: string | null;
@@ -59,6 +60,7 @@ export interface Database {
           rol_descripcion?: string | null;
           compania_numero?: number | null;
           compania_pareja_id?: string | null;
+          link_whatsapp?: string | null;
           barrio?: string | null;
           tipo_alojamiento?: string | null;
           numero_habitacion?: string | null;
@@ -93,6 +95,7 @@ export interface Database {
           rol_descripcion?: string | null;
           compania_numero?: number | null;
           compania_pareja_id?: string | null;
+          link_whatsapp?: string | null;
           barrio?: string | null;
           tipo_alojamiento?: string | null;
           numero_habitacion?: string | null;

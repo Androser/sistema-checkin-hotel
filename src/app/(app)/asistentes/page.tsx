@@ -14,6 +14,7 @@ import { AsistenteModal } from "@/components/asistentes/AsistenteModal";
 import { FichaMedicaModal } from "@/components/asistentes/FichaMedicaModal";
 import { ReenviarQrModal } from "@/components/asistentes/ReenviarQrModal";
 import { BulkSendModal } from "@/components/asistentes/BulkSendModal";
+import { CompaniaWhatsappCard } from "@/components/asistentes/CompaniaWhatsappCard";
 import { createClient } from "@/lib/supabase/client";
 import { formatFullName } from "@/lib/utils";
 import { asignarConsejeros, generarCompanias } from "@/lib/companias";
@@ -283,12 +284,28 @@ export default function AsistentesPage() {
     [asistentes, selectedIds]
   );
 
-  const consejerosFiltrados = useMemo(() => {
+  const miembrosCompania = useMemo(() => {
     if (!compania) return [];
-    return asistentes.filter(
-      (a) => a.rol === "consejero" && String(a.compania_numero) === compania
-    );
+    return asistentes.filter((a) => String(a.compania_numero) === compania);
   }, [asistentes, compania]);
+
+  const consejerosFiltrados = useMemo(
+    () => miembrosCompania.filter((a) => a.rol === "consejero"),
+    [miembrosCompania]
+  );
+
+  const participantesFiltrados = useMemo(
+    () =>
+      miembrosCompania.filter(
+        (a) => a.rol !== "consejero" && a.rol !== "coordinador"
+      ),
+    [miembrosCompania]
+  );
+
+  const linkWhatsappCompania = useMemo(
+    () => miembrosCompania.find((a) => a.link_whatsapp)?.link_whatsapp || null,
+    [miembrosCompania]
+  );
 
   const handleGenerarCompanias = async () => {
     setGenerating(true);
@@ -371,23 +388,40 @@ export default function AsistentesPage() {
         estacas={estacas}
       />
 
-      {compania && consejerosFiltrados.length > 0 && (
+      {compania && (
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
           <h3 className="mb-3 text-sm font-semibold text-amber-900">
             Consejeros de la Compañía {compania}
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {consejerosFiltrados.map((c) => (
-              <div
-                key={c.id}
-                className="rounded-lg bg-white p-3 shadow-sm"
-              >
-                <p className="font-medium text-slate-900">{formatFullName(c)}</p>
-                <p className="text-sm text-slate-500">{c.estaca_distrito_mision}</p>
-                <p className="text-sm text-slate-600">Celular: {c.celular || "—"}</p>
-              </div>
-            ))}
-          </div>
+          {consejerosFiltrados.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {consejerosFiltrados.map((c) => (
+                <div key={c.id} className="rounded-lg bg-white p-3 shadow-sm">
+                  <p className="font-medium text-slate-900">
+                    {formatFullName(c)}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {c.estaca_distrito_mision}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Celular: {c.celular || "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-amber-800">
+              No hay consejeros asignados a esta compañía.
+            </p>
+          )}
+
+          <CompaniaWhatsappCard
+            numero={Number(compania)}
+            consejeros={consejerosFiltrados}
+            participantes={participantesFiltrados}
+            linkWhatsapp={linkWhatsappCompania}
+            onSaved={refetch}
+          />
         </div>
       )}
 

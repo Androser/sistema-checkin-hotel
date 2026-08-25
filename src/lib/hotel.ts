@@ -28,3 +28,33 @@ export function buildWhatsAppMessage(nombreCompleto: string, qrLink: string) {
     `No compartas este enlace con otras personas.`
   );
 }
+
+import { Asistente } from "./types";
+import { formatFullName } from "./utils";
+
+export function buildCompaniaWhatsAppMessage({
+  numero,
+  consejeros,
+  participantes,
+  link,
+}: {
+  numero: number;
+  consejeros: Asistente[];
+  participantes: Asistente[];
+  link: string;
+}) {
+  const nombresConsejeros = consejeros.map(formatFullName).join(" y ");
+
+  return (
+    `¡Hola! 👋\n\n` +
+    `Te invitamos a unirte al grupo de WhatsApp de la *Compañía ${numero}* de la ${EVENT_INFO.nombre}.\n\n` +
+    `👤 Consejeros: ${nombresConsejeros || "Por definir"}\n` +
+    `👥 Participantes: ${participantes.length}\n\n` +
+    `🔗 Únete aquí:\n${link}\n\n` +
+    `¡Es importante unirse para recibir toda la información del evento! 🙌`
+  );
+}
+
+export function getWhatsAppShareUrl(message: string) {
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+}
