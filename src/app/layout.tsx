@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Topbar } from "@/components/layout/Topbar";
-import { MobileNav } from "@/components/layout/MobileNav";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,15 +19,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col lg:flex-row font-sans bg-slate-50">
-        <Sidebar />
-        <div className="flex flex-1 flex-col min-w-0">
-          <Topbar />
-          <main className="flex-1 p-4 pb-24 lg:p-8 overflow-x-hidden">
-            {children}
-          </main>
-          <MobileNav />
-        </div>
+      <body className="min-h-full font-sans bg-slate-50">
+        {children}
       </body>
     </html>
   );

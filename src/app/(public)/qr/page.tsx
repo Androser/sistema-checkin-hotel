@@ -88,6 +88,15 @@ export default async function QrPage({ searchParams }: QrPageProps) {
             </p>
           </div>
         )}
+
+        <div className="mt-6 text-center">
+          <a
+            href="/buscar-qr"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Buscar mi QR
+          </a>
+        </div>
       </div>
     </main>
   );
