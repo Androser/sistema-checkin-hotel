@@ -123,6 +123,7 @@ export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null
   const nombres = get(0);
   const apellidos = get(1);
   const nombrePreferencia = get(2);
+  const pagoRolRaw = get(4);
   const estaca = get(5);
   const fechaNacimientoRaw = get(6);
   const sexoRaw = get(7);
@@ -139,17 +140,21 @@ export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null
   if (!nombres && !apellidos && !estaca) return null;
 
   const cedula = null; // Microsoft Forms no incluye cédula
+  const { rol, rol_descripcion } = parseRol(pagoRolRaw);
 
   return {
     nombres: nombres || nombrePreferencia,
     apellidos,
     cedula,
     documento_pendiente: true,
+    rol,
+    rol_descripcion,
     estaca_distrito_mision: estaca,
     fecha_nacimiento: parseFecha(fechaNacimientoRaw),
     sexo: parseSexo(sexoRaw),
     celular: limpiarTelefono(celular),
     correo,
+    barrio: barrioRama || null,
     grupo_sanguineo: parseGrupoSanguineo(grupoSanguineoRaw),
     eps_seguro: seguroMedico || null,
     enfermedad_cronica: parseSiNoTexto(enfermedadCronicaRaw),
@@ -168,6 +173,15 @@ function parseFecha(value: string): string | null {
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return null;
+}
+
+function parseRol(value: string): { rol: string; rol_descripcion: string | null } {
+  const lower = value.toLowerCase();
+  if (lower.includes("consejero")) return { rol: "consejero", rol_descripcion: null };
+  if (lower.includes("staff") || lower.includes("coordinador")) {
+    return { rol: "coordinador", rol_descripcion: null };
+  }
+  return { rol: "participante", rol_descripcion: null };
 }
 
 function parseSexo(value: string): string | null {

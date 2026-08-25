@@ -21,6 +21,11 @@ export interface Database {
           sexo: string | null;
           celular: string | null;
           correo: string | null;
+          rol: string | null;
+          rol_descripcion: string | null;
+          compania_numero: number | null;
+          compania_pareja_id: string | null;
+          barrio: string | null;
           tipo_alojamiento: string | null;
           numero_habitacion: string | null;
           cama_asignada: string | null;
@@ -50,6 +55,11 @@ export interface Database {
           sexo?: string | null;
           celular?: string | null;
           correo?: string | null;
+          rol?: string | null;
+          rol_descripcion?: string | null;
+          compania_numero?: number | null;
+          compania_pareja_id?: string | null;
+          barrio?: string | null;
           tipo_alojamiento?: string | null;
           numero_habitacion?: string | null;
           cama_asignada?: string | null;
@@ -79,6 +89,11 @@ export interface Database {
           sexo?: string | null;
           celular?: string | null;
           correo?: string | null;
+          rol?: string | null;
+          rol_descripcion?: string | null;
+          compania_numero?: number | null;
+          compania_pareja_id?: string | null;
+          barrio?: string | null;
           tipo_alojamiento?: string | null;
           numero_habitacion?: string | null;
           cama_asignada?: string | null;

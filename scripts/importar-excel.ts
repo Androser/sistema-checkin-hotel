@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import * as XLSX from "xlsx";
 import readline from "readline";
+import { asignarConsejeros, generarCompanias } from "../src/lib/companias";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -287,6 +288,12 @@ async function main() {
   console.log(`   Errores: ${errors}`);
 
   if (!dryRun && (inserted > 0 || updated > 0)) {
+    console.log("\n🎯 Asignando consejeros a compañías...");
+    await asignarConsejeros(supabase);
+
+    console.log("\n🎯 Generando compañías para participantes...");
+    await generarCompanias(supabase, { soloNuevos: true });
+
     console.log("\n💡 Recuerda ejecutar: npm run generate-qr");
   }
 }

@@ -27,6 +27,9 @@ export type EstadoCheckinFilter = (typeof ESTADOS_CHECKIN)[number];
 export const SEXOS = ["M", "F", "Otro"] as const;
 export type Sexo = (typeof SEXOS)[number];
 
+export const ROLES = ["participante", "consejero", "coordinador"] as const;
+export type Rol = (typeof ROLES)[number];
+
 export const GRUPOS_SANGUINEOS = [
   "A+",
   "A-",
