@@ -90,7 +90,7 @@ export function buildWhatsAppMessageWithCompania(
     `${e.hotel} Hotel: ${HOTEL_INFO.nombre}\n` +
     `${e.pin} ${HOTEL_INFO.direccion}\n\n` +
     `${e.link} Tu código QR:\n${qrLink}\n` +
-    `${e.warning} *Importante:* ingresa tu cédula en el link para ver y descargar el QR.\n\n`;
+    `${e.warning} PARA PODER ENTRAR AL HOTEL. Importante ingresa tu cédula en el link para ver y descargar el QR.\n\n`;
 
   if (compania?.link) {
     const nombresConsejeros = compania.consejeros
@@ -105,13 +105,14 @@ export function buildWhatsAppMessageWithCompania(
 
     message +=
       `${e.divider}\n\n` +
-      `${e.phone} *Tu compañía: Compañía ${compania.numero}*\n\n` +
+      `${e.phone} *Tu compañía: Compañía ${compania.numero}*\n` +
+      `${e.link} Grupo WhatsApp:\n${compania.link}\n\n` +
       `${e.person} Consejeros: ${nombresConsejeros || "Por definir"}\n` +
       `${e.people} Participantes: ${compania.participantes.length}` +
       (hombres || mujeres
         ? ` (${e.man} ${hombres} hombres · ${e.woman} ${mujeres} mujeres)`
         : "") +
-      `\n${e.link} Grupo WhatsApp:\n${compania.link}\n\n`;
+      `\n\n`;
   }
 
   message += "No compartas este mensaje.";
