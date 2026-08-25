@@ -30,20 +30,28 @@ export function normalizeId(value: string) {
   return value.replace(/\D/g, "").trim();
 }
 
+export function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "").trim();
+  if (digits.length === 10 && !digits.startsWith("57")) {
+    return `57${digits}`;
+  }
+  return digits;
+}
+
 export function findDuplicates(
   rows: Partial<AsistenteInsert>[],
   existing: any[]
 ): ParsedRow[] {
   return rows.map((row) => {
     const cedula = normalizeId(row.cedula || "");
-    const celular = normalizeId(row.celular || "");
+    const celular = normalizePhone(row.celular || "");
     const name = normalizeName(`${row.nombres || ""} ${row.apellidos || ""}`);
 
     for (const ex of existing) {
       if (cedula && normalizeId(ex.cedula || "") === cedula) {
         return { row, match: { existing: ex, matchedBy: "cédula", action: "skip" } };
       }
-      if (celular && normalizeId(ex.celular || "") === celular) {
+      if (celular && normalizePhone(ex.celular || "") === celular) {
         return { row, match: { existing: ex, matchedBy: "celular", action: "skip" } };
       }
       const existingName = normalizeName(`${ex.nombres || ""} ${ex.apellidos || ""}`);
