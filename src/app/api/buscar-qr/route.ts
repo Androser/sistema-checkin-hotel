@@ -14,37 +14,40 @@ export async function POST(request: NextRequest) {
 
     if (!clean) {
       return NextResponse.json(
-        { error: "Ingresa una cédula o número de celular." },
+        { error: "Ingresa una cédula válida." },
         { status: 400 }
       );
     }
 
     const supabase = createClient();
 
+    const selectFields =
+      "id, nombres, apellidos, cedula, qr_token, estaca_distrito_mision";
+
     // Buscar por cédula normalizada
     const { data: byCedula } = await supabase
       .from("asistentes")
-      .select("qr_token")
+      .select(selectFields)
       .eq("cedula", clean)
       .single();
 
     if (byCedula?.qr_token) {
-      return NextResponse.json({ token: byCedula.qr_token });
+      return NextResponse.json(byCedula);
     }
 
-    // Buscar por celular normalizado
+    // Respaldo por celular normalizado (no se muestra en el formulario, pero permite flexibilidad)
     const { data: byCelular } = await supabase
       .from("asistentes")
-      .select("qr_token")
+      .select(selectFields)
       .eq("celular", clean)
       .single();
 
     if (byCelular?.qr_token) {
-      return NextResponse.json({ token: byCelular.qr_token });
+      return NextResponse.json(byCelular);
     }
 
     return NextResponse.json(
-      { error: "No se encontró un asistente con ese dato." },
+      { error: "No se encontró un asistente con esa cédula." },
       { status: 404 }
     );
   } catch (err: any) {
