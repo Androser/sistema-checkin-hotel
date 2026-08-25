@@ -8,28 +8,45 @@ export function useAsistentes() {
   const [asistentes, setAsistentes] = useState<Asistente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const supabase = createClient();
-
-  const fetchAsistentes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error } = await supabase
-      .from("asistentes")
-      .select("*")
-      .order("apellidos", { ascending: true });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setAsistentes(data || []);
-    }
-    setLoading(false);
-  }, [supabase]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchAsistentes();
-  }, [fetchAsistentes]);
+    let cancelled = false;
 
-  return { asistentes, loading, error, refetch: fetchAsistentes };
+    const fetchAsistentes = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("asistentes")
+          .select("*")
+          .order("apellidos", { ascending: true });
+
+        if (cancelled) return;
+        if (error) {
+          setError(error.message);
+        } else {
+          setAsistentes(data || []);
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err?.message || "Error al cargar asistentes");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAsistentes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const refetch = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
+
+  return { asistentes, loading, error, refetch };
 }
