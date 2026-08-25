@@ -24,7 +24,7 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
   const total = asistentes.length;
   const progress = total > 0 ? Math.round(((sentIds.size) / total) * 100) : 0;
 
-  const siteUrl = "https://sistema-checkin-hotel-rhatfpov9-enterprise-solutions.vercel.app";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
   const { qrLink, imageUrl } = useMemo(() => {
     if (!current?.qr_token) return { qrLink: "", imageUrl: "" };
     const displayName = encodeURIComponent(

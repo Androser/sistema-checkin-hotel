@@ -20,7 +20,7 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
 
   if (!asistente) return null;
 
-  const siteUrl = "https://sistema-checkin-hotel-rhatfpov9-enterprise-solutions.vercel.app";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
   const displayName = encodeURIComponent(
     `${asistente.nombres} ${asistente.apellidos}`.trim()
   );
