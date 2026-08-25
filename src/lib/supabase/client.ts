@@ -3,6 +3,9 @@ import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/
 let client: SupabaseClient | null = null;
 
 export function createClient() {
+  if (typeof window !== "undefined" && (window as any).__supabaseClient) {
+    return (window as any).__supabaseClient as SupabaseClient;
+  }
   if (client) return client;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,5 +29,10 @@ export function createClient() {
       },
     },
   });
+
+  if (typeof window !== "undefined") {
+    (window as any).__supabaseClient = client;
+  }
+
   return client;
 }
