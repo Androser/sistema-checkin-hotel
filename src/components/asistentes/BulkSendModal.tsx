@@ -24,17 +24,17 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
   const total = asistentes.length;
   const progress = total > 0 ? Math.round(((sentIds.size) / total) * 100) : 0;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = "https://sistema-checkin-hotel-rhatfpov9-enterprise-solutions.vercel.app";
   const { qrLink, imageUrl } = useMemo(() => {
     if (!current?.qr_token) return { qrLink: "", imageUrl: "" };
     const displayName = encodeURIComponent(
       `${current.nombres} ${current.apellidos}`.trim()
     );
     return {
-      qrLink: `${siteUrl}/escaner?token=${current.qr_token}&n=${displayName}`,
+      qrLink: `${siteUrl}/qr?token=${current.qr_token}`,
       imageUrl: `/api/qr?token=${current.qr_token}&n=${displayName}`,
     };
-  }, [current, siteUrl]);
+  }, [current]);
 
   useEffect(() => {
     if (open) {

@@ -25,7 +25,7 @@ export default async function QrPage({ searchParams }: QrPageProps) {
     notFound();
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-rhatfpov9-enterprise-solutions.vercel.app";
   const imageUrl = `${siteUrl}/api/qr?token=${token}`;
 
   return (
