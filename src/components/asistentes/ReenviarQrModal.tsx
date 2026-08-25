@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
+import { SITE_URL } from "@/lib/site";
 
 interface ReenviarQrModalProps {
   open: boolean;
@@ -20,7 +21,7 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
 
   if (!asistente) return null;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
+  const siteUrl = SITE_URL;
   const displayName = encodeURIComponent(
     `${asistente.nombres} ${asistente.apellidos}`.trim()
   );

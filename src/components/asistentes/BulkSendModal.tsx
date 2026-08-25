@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
+import { SITE_URL } from "@/lib/site";
 
 interface BulkSendModalProps {
   open: boolean;
@@ -24,7 +25,7 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
   const total = asistentes.length;
   const progress = total > 0 ? Math.round(((sentIds.size) / total) * 100) : 0;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sistema-checkin-hotel-omega.vercel.app";
+  const siteUrl = SITE_URL;
   const { qrLink, imageUrl } = useMemo(() => {
     if (!current?.qr_token) return { qrLink: "", imageUrl: "" };
     const displayName = encodeURIComponent(
