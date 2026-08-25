@@ -11,6 +11,7 @@ type SortField =
   | "estado"
   | "nombre"
   | "estaca"
+  | "sexo"
   | "rol"
   | "compania"
   | "habitacion"
@@ -93,6 +94,7 @@ export function AsistenteTable({
               <SortHeader field="estado">Estado</SortHeader>
               <SortHeader field="nombre">Nombre</SortHeader>
               <SortHeader field="estaca">Estaca</SortHeader>
+              <SortHeader field="sexo">Sexo</SortHeader>
               <SortHeader field="rol">Rol</SortHeader>
               <SortHeader field="compania">Compañía</SortHeader>
               <SortHeader field="habitacion">Habitación</SortHeader>
@@ -142,6 +144,9 @@ export function AsistenteTable({
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {a.estaca_distrito_mision}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {a.sexo === "M" ? "Masculino" : a.sexo === "F" ? "Femenino" : "—"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   <Badge variant={a.rol === "consejero" ? "warning" : a.rol === "coordinador" ? "secondary" : "default"}>

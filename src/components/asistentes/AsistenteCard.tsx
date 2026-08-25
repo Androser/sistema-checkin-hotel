@@ -94,6 +94,12 @@ export function AsistenteCard({
               </p>
             </div>
             <div>
+              <p className="text-xs text-slate-400">Sexo</p>
+              <p className="font-medium text-slate-700">
+                {a.sexo === "M" ? "Masculino" : a.sexo === "F" ? "Femenino" : "—"}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-slate-400">Compañía</p>
               <p className="font-medium text-slate-700">
                 {a.rol === "consejero" || a.rol === "participante"

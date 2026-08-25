@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, Users, Send } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAsistentes } from "@/hooks/useAsistentes";
 import { Asistente, EstadoCheckinFilter } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import { asignarConsejeros, generarCompanias } from "@/lib/companias";
 export default function AsistentesPage() {
   const { asistentes, loading, error, refetch } = useAsistentes();
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [search, setSearch] = useState("");
   const [estaca, setEstaca] = useState("");
@@ -33,6 +36,7 @@ export default function AsistentesPage() {
     | "estado"
     | "nombre"
     | "estaca"
+    | "sexo"
     | "rol"
     | "compania"
     | "habitacion"
@@ -49,6 +53,14 @@ export default function AsistentesPage() {
       direction: prev.field === field && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
+
+  // Leer filtro de compañía desde URL (usado por "Ver miembros" en /companias)
+  useEffect(() => {
+    const companiaFromUrl = searchParams.get("compania");
+    if (companiaFromUrl) {
+      setCompania(companiaFromUrl);
+    }
+  }, [searchParams]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Asistente | null>(null);
@@ -113,6 +125,8 @@ export default function AsistentesPage() {
           return (a.estaca_distrito_mision || "").localeCompare(
             b.estaca_distrito_mision || ""
           ) * dir;
+        case "sexo":
+          return (a.sexo || "").localeCompare(b.sexo || "") * dir;
         case "rol":
           return (a.rol || "").localeCompare(b.rol || "") * dir;
         case "compania":

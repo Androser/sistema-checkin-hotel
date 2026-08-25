@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ScanLine } from "lucide-react";
+import { LayoutDashboard, Users, ScanLine, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_LINKS } from "@/lib/constants";
 
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="h-5 w-5" />,
+  Building2: <Building2 className="h-5 w-5" />,
   Users: <Users className="h-5 w-5" />,
   ScanLine: <ScanLine className="h-5 w-5" />,
 };

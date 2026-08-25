@@ -27,3 +27,18 @@ export function generarTokenQr(): string {
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+export function calcularEdad(fechaNacimiento: string | null | undefined): number | null {
+  if (!fechaNacimiento) return null;
+  const nacimiento = new Date(fechaNacimiento);
+  if (isNaN(nacimiento.getTime())) return null;
+
+  // Fecha de referencia: inicio del evento (1 de septiembre de 2026)
+  const referencia = new Date("2026-09-01");
+  let edad = referencia.getFullYear() - nacimiento.getFullYear();
+  const mes = referencia.getMonth() - nacimiento.getMonth();
+  if (mes < 0 || (mes === 0 && referencia.getDate() < nacimiento.getDate())) {
+    edad--;
+  }
+  return edad;
+}
