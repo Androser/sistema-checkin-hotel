@@ -15,7 +15,7 @@ import { ReenviarQrModal } from "@/components/asistentes/ReenviarQrModal";
 import { BulkSendModal } from "@/components/asistentes/BulkSendModal";
 import { createClient } from "@/lib/supabase/client";
 import { formatFullName } from "@/lib/utils";
-import { generarCompanias } from "@/lib/companias";
+import { asignarConsejeros, generarCompanias } from "@/lib/companias";
 
 export default function AsistentesPage() {
   const { asistentes, loading, error, refetch } = useAsistentes();
@@ -132,6 +132,17 @@ export default function AsistentesPage() {
       }
 
       setModalOpen(false);
+
+      // Reasignar consejeros y compañías automáticamente si hubo inserciones
+      if (data.insert.length > 0) {
+        try {
+          await asignarConsejeros(supabase);
+          await generarCompanias(supabase, { soloNuevos: true });
+        } catch (compErr: any) {
+          console.error("Error asignando compañías:", compErr);
+        }
+      }
+
       refetch();
     } catch (err: any) {
       const message = err?.message || "Error al guardar los asistentes.";

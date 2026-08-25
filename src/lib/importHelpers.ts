@@ -110,13 +110,29 @@ export function parseTablaPegada(text: string): ParseResult {
   return { rows, errors };
 }
 
+function detectOffset(columns: string[]): number {
+  if (columns.length < 23) return 0;
+  const first = columns[0].trim();
+  const second = columns[1].trim();
+  const third = columns[2].trim();
+
+  const looksLikeId = /^\d+$/.test(first);
+  const looksLikeTimestamp = (v: string) =>
+    /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(v) && v.includes(":");
+
+  if (looksLikeId && looksLikeTimestamp(second) && looksLikeTimestamp(third)) {
+    return 3;
+  }
+  return 0;
+}
+
 export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null {
   const columns = text.split("\t").map((c) => c.trim());
 
   if (columns.length < 10) return null;
 
   // Detectar si vienen las 3 columnas iniciales (ID, Start time, Completion time)
-  const offset = columns.length >= 23 ? 3 : 0;
+  const offset = detectOffset(columns);
 
   const get = (index: number) => columns[index + offset] || "";
 
