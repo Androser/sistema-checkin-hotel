@@ -14,6 +14,17 @@ export function createClient() {
     );
   }
 
-  client = createSupabaseClient(url, key);
+  client = createSupabaseClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0,
+      },
+    },
+  });
   return client;
 }
