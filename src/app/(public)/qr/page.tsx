@@ -4,7 +4,16 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { Search, Save, Download, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import {
+  Search,
+  Save,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  ArrowLeft,
+  AlertTriangle,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HOTEL_INFO, EVENT_INFO } from "@/lib/hotel";
@@ -52,6 +61,7 @@ function QrPageContent() {
   const [identificador, setIdentificador] = useState("");
   const [asistente, setAsistente] = useState<AsistenteData | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrVisible, setQrVisible] = useState(false);
   const [editCedula, setEditCedula] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -72,7 +82,7 @@ function QrPageContent() {
       const res = await fetch(`/api/qr-info?token=${encodeURIComponent(token)}`);
       if (!res.ok) throw new Error("Token inválido");
       const data = await res.json();
-      await showResult(data);
+      showResult(data);
     } catch {
       setStep("notfound");
     }
@@ -109,10 +119,15 @@ function QrPageContent() {
     }
   };
 
-  const showResult = async (data: AsistenteData) => {
+  const showResult = (data: AsistenteData) => {
     setAsistente(data);
     setEditCedula(data.cedula || "");
+    setQrVisible(false);
+    setQrDataUrl("");
+    setStep("result");
+  };
 
+  const generarQr = async (data: AsistenteData) => {
     const siteUrl = "https://sistema-checkin-hotel-omega.vercel.app";
     const displayName = encodeURIComponent(
       `${data.nombres || ""} ${data.apellidos || ""}`.trim()
@@ -124,42 +139,52 @@ function QrPageContent() {
       type: "image/png",
     });
     setQrDataUrl(dataUrl);
-    setStep("result");
   };
 
-  const handleSaveCedula = async () => {
+  const handleVerQr = async () => {
     if (!asistente) return;
     setSaving(true);
     setSaveMessage("");
 
     try {
-      const res = await fetch("/api/actualizar-cedula", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: asistente.id, cedula: editCedula }),
-      });
+      // Si la cédula cambió, guardarla primero
+      if (editCedula.trim() !== (asistente.cedula || "")) {
+        const res = await fetch("/api/actualizar-cedula", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: asistente.id, cedula: editCedula }),
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (!res.ok) {
-        setSaveMessage(data.error || "Error al guardar.");
-        return;
+        if (!res.ok) {
+          setSaveMessage(data.error || "Error al guardar la cédula.");
+          setSaving(false);
+          return;
+        }
+
+        setAsistente((prev) => (prev ? { ...prev, cedula: data.cedula } : null));
       }
 
-      setAsistente((prev) => (prev ? { ...prev, cedula: data.cedula } : null));
-      setSaveMessage("Cédula actualizada correctamente.");
+      await generarQr(asistente);
+      setQrVisible(true);
+      setSaveMessage("");
     } catch {
-      setSaveMessage("Error al guardar. Intenta de nuevo.");
+      setSaveMessage("Error al generar el QR. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDownload = () => {
-    if (!qrDataUrl) return;
+    if (!qrDataUrl || !asistente) return;
     const link = document.createElement("a");
     link.href = qrDataUrl;
-    link.download = `qr-${asistente?.cedula || asistente?.id}.png`;
+    const safeName = `${asistente.nombres || "asistente"}-${asistente.apellidos || ""}`
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+    link.download = `qr-${safeName}.png`;
     link.click();
   };
 
@@ -249,28 +274,97 @@ function QrPageContent() {
           )}
         </div>
 
-        {/* QR */}
-        <div className="rounded-3xl bg-white p-6 shadow-xl text-center">
-          <h2 className="text-lg font-semibold text-slate-900">Código de acceso</h2>
-          <p className="text-sm text-slate-500">Muestra este QR al llegar al hotel</p>
+        {/* Formulario de cédula / QR */}
+        <div className="rounded-3xl bg-white p-6 shadow-xl">
+          {!qrVisible ? (
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Verifica tu documento
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Antes de mostrar tu código de acceso, asegúrate de que tus datos sean
+                correctos y registra tu cédula. Esto evitará demoras en tu check-in y
+                check-out.
+              </p>
 
-          {qrDataUrl && (
-            <div className="my-4 flex justify-center rounded-2xl border border-slate-100 bg-white p-4">
-              <Image
-                src={qrDataUrl}
-                alt={`QR de ${fullName}`}
-                width={260}
-                height={260}
-                unoptimized
-                className="rounded-lg"
-              />
+              <div className="mt-5 text-left">
+                <label className="text-sm font-medium text-slate-700">
+                  Cédula de ciudadanía
+                </label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    value={editCedula}
+                    onChange={(e) => setEditCedula(e.target.value)}
+                    placeholder="Ingresa tu cédula"
+                    className="flex-1 text-center text-lg"
+                  />
+                </div>
+                {saveMessage && (
+                  <p
+                    className={`mt-2 text-center text-xs ${
+                      saveMessage.includes("Error")
+                        ? "text-red-600"
+                        : "text-emerald-600"
+                    }`}
+                  >
+                    {saveMessage}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                className="mt-5 w-full"
+                onClick={handleVerQr}
+                disabled={saving || !editCedula.trim()}
+                type="button"
+              >
+                {saving ? (
+                  "Procesando..."
+                ) : (
+                  <>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver mi QR de acceso
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-slate-900">Código de acceso</h2>
+              <p className="text-sm text-slate-500">Muestra este QR al llegar al hotel</p>
+
+              {qrDataUrl && (
+                <div className="my-4 flex justify-center rounded-2xl border border-slate-100 bg-white p-4">
+                  <Image
+                    src={qrDataUrl}
+                    alt={`QR de ${fullName}`}
+                    width={260}
+                    height={260}
+                    unoptimized
+                    className="rounded-lg"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleDownload} type="button" className="flex-1">
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar QR
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setQrVisible(false)}
+                  type="button"
+                  className="flex-1"
+                >
+                  Ocultar QR
+                </Button>
+              </div>
             </div>
           )}
-
-          <Button variant="outline" onClick={handleDownload} type="button">
-            <Download className="mr-2 h-4 w-4" />
-            Descargar QR
-          </Button>
         </div>
 
         {/* Secciones colapsables */}
@@ -393,35 +487,10 @@ function QrPageContent() {
               <p>
                 <span className="font-medium">Celular:</span> {asistente.celular || "—"}
               </p>
-              <div>
-                <label className="font-medium">Cédula:</label>
-                <div className="mt-1 flex gap-2">
-                  <Input
-                    value={editCedula}
-                    onChange={(e) => setEditCedula(e.target.value)}
-                    placeholder="Cédula"
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleSaveCedula}
-                    disabled={saving || !editCedula.trim()}
-                    type="button"
-                  >
-                    {saving ? "..." : <Save className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {saveMessage && (
-                  <p
-                    className={`mt-1 text-xs ${
-                      saveMessage.includes("Error")
-                        ? "text-red-600"
-                        : "text-emerald-600"
-                    }`}
-                  >
-                    {saveMessage}
-                  </p>
-                )}
-              </div>
+              <p>
+                <span className="font-medium">Cédula:</span>{" "}
+                {asistente.cedula || "Por registrar"}
+              </p>
             </div>
           </Section>
         </div>
