@@ -6,7 +6,6 @@ import Image from "next/image";
 import QRCode from "qrcode";
 import {
   Search,
-  Save,
   Download,
   ChevronDown,
   ChevronUp,
@@ -76,17 +75,51 @@ function QrPageContent() {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const loadByToken = useCallback(async (token: string) => {
-    setStep("loading");
-    try {
-      const res = await fetch(`/api/qr-info?token=${encodeURIComponent(token)}`);
-      if (!res.ok) throw new Error("Token inválido");
-      const data = await res.json();
-      showResult(data);
-    } catch {
-      setStep("notfound");
-    }
+  const generarQr = useCallback(async (data: AsistenteData) => {
+    const siteUrl = "https://sistema-checkin-hotel-omega.vercel.app";
+    const displayName = encodeURIComponent(
+      `${data.nombres || ""} ${data.apellidos || ""}`.trim()
+    );
+    const scanUrl = `${siteUrl}/escaner?token=${data.qr_token}&n=${displayName}`;
+    const dataUrl = await QRCode.toDataURL(scanUrl, {
+      width: 400,
+      margin: 2,
+      type: "image/png",
+    });
+    setQrDataUrl(dataUrl);
   }, []);
+
+  const showResult = useCallback(
+    async (data: AsistenteData) => {
+      setAsistente(data);
+      setEditCedula(data.cedula || "");
+      setStep("result");
+
+      if (data.cedula) {
+        setQrVisible(true);
+        await generarQr(data);
+      } else {
+        setQrVisible(false);
+        setQrDataUrl("");
+      }
+    },
+    [generarQr]
+  );
+
+  const loadByToken = useCallback(
+    async (token: string) => {
+      setStep("loading");
+      try {
+        const res = await fetch(`/api/qr-info?token=${encodeURIComponent(token)}`);
+        if (!res.ok) throw new Error("Token inválido");
+        const data = await res.json();
+        await showResult(data);
+      } catch {
+        setStep("notfound");
+      }
+    },
+    [showResult]
+  );
 
   useEffect(() => {
     if (tokenFromUrl) {
@@ -117,28 +150,6 @@ function QrPageContent() {
     } catch {
       setStep("notfound");
     }
-  };
-
-  const showResult = (data: AsistenteData) => {
-    setAsistente(data);
-    setEditCedula(data.cedula || "");
-    setQrVisible(false);
-    setQrDataUrl("");
-    setStep("result");
-  };
-
-  const generarQr = async (data: AsistenteData) => {
-    const siteUrl = "https://sistema-checkin-hotel-omega.vercel.app";
-    const displayName = encodeURIComponent(
-      `${data.nombres || ""} ${data.apellidos || ""}`.trim()
-    );
-    const scanUrl = `${siteUrl}/escaner?token=${data.qr_token}&n=${displayName}`;
-    const dataUrl = await QRCode.toDataURL(scanUrl, {
-      width: 400,
-      margin: 2,
-      type: "image/png",
-    });
-    setQrDataUrl(dataUrl);
   };
 
   const handleVerQr = async () => {
