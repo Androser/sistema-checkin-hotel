@@ -1,15 +1,17 @@
+export const PAREJAS_CONSEJEROS: { numero: number; hombre: string; mujer: string }[] = [
+  { numero: 1, hombre: "Ronald David Gallego Pineda", mujer: "Damarys Antonieta Punce Pérez" },
+  { numero: 2, hombre: "Andres Camilo Morales Castellanos", mujer: "Mariana Estrada López" },
+  { numero: 3, hombre: "Oscar David Romero Mancipe", mujer: "Aura Elizabeth Penagos Rodríguez" },
+  { numero: 4, hombre: "Michael Smith Saavedra Forero", mujer: "Ximena Andrea Guarnizo Lozada" },
+  { numero: 5, hombre: "dylan rafael muñoz acosta", mujer: "Jeniffer Alejandra Sarmiento Farieta" },
+  { numero: 6, hombre: "Carlos Mario Espinel Gómez", mujer: "Dayanna Stefanny Acosta Arango" },
+  { numero: 7, hombre: "Jimmy Santiago Cómbita Ambra", mujer: "Danielle Vargas Pinzón" },
+  { numero: 8, hombre: "Yeison Celis Medina", mujer: "María Camila Huertas Pérez" },
+];
+
 export type Asistente = any;
 
-export const PAREJAS_CONSEJEROS: { numero: number; hombre: string; mujer: string }[] = [
-  { numero: 1, hombre: "Ronald David Gallego Pineda", mujer: "Damarys Punce" },
-  { numero: 2, hombre: "Camilo Morales", mujer: "Mariana Estrada" },
-  { numero: 3, hombre: "Oscar Romero", mujer: "Elizabeth Penagos" },
-  { numero: 4, hombre: "Maicol Saavedra", mujer: "Ximena Guarnizo" },
-  { numero: 5, hombre: "Dylan Muñoz", mujer: "Alejandra Sarmiento" },
-  { numero: 6, hombre: "Carlos Espinel", mujer: "Dayana Acosta" },
-  { numero: 7, hombre: "Jimmy Combita", mujer: "Danielle Vargas" },
-  { numero: 8, hombre: "Yeison Celis", mujer: "Camila Huertas" },
-];
+
 
 function normalizeFullName(value: string) {
   return value
