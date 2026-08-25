@@ -25,7 +25,7 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
     `${asistente.nombres} ${asistente.apellidos}`.trim()
   );
   const qrLink = asistente.qr_token
-    ? `${siteUrl}/escaner?token=${asistente.qr_token}&n=${displayName}`
+    ? `${siteUrl}/qr?token=${asistente.qr_token}`
     : "";
   const imageUrl = asistente.qr_token
     ? `/api/qr?token=${asistente.qr_token}&n=${displayName}`

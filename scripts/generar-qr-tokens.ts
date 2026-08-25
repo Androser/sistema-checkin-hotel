@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
 import { WebSocket } from "ws";
 (globalThis as any).WebSocket = WebSocket;
 
