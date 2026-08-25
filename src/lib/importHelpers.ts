@@ -163,23 +163,23 @@ export function parseTablaPegada(text: string): ParseResult {
     });
 
     if (!parsed) {
-      errors.push(
-        `Fila ${index + 1}: no se pudo reconocer el formato. ` +
-          `Tiene ${columns.length} columnas. Primeras: ${columns
-            .slice(0, 5)
-            .map((c) => `"${c}"`)
-            .join(", ")}`
-      );
-      return;
-    }
-    if (!parsed.nombres && !parsed.apellidos) {
-      errors.push(
-        `Fila ${index + 1}: faltan nombres y apellidos. ` +
-          `Primeras columnas: ${columns
-            .slice(0, 5)
-            .map((c) => `"${c}"`)
-            .join(", ")}`
-      );
+      if (columns.length < 10) {
+        errors.push(
+          `Fila ${index + 1}: no se pudo reconocer el formato. ` +
+            `Tiene ${columns.length} columnas. Primeras: ${columns
+              .slice(0, 5)
+              .map((c) => `"${c}"`)
+              .join(", ")}`
+        );
+      } else {
+        errors.push(
+          `Fila ${index + 1}: faltan datos obligatorios (nombres, apellidos o estaca). ` +
+            `Primeras columnas: ${columns
+              .slice(0, 5)
+              .map((c) => `"${c}"`)
+              .join(", ")}`
+        );
+      }
       return;
     }
     rows.push(parsed);
@@ -224,11 +224,25 @@ function parseWithOffset(
 
   if (!nombres && !apellidos && !estaca) return null;
 
+  // Si faltan apellidos pero los nombres tienen más de una palabra,
+  // usar la última palabra como apellido.
+  let finalNombres = nombres || nombrePreferencia;
+  let finalApellidos = apellidos;
+  if (finalNombres && !finalApellidos) {
+    const parts = finalNombres.trim().split(/\s+/);
+    if (parts.length > 1) {
+      finalApellidos = parts.pop() || "";
+      finalNombres = parts.join(" ");
+    }
+  }
+
+  if (!finalNombres || !finalApellidos || !estaca) return null;
+
   const { rol, rol_descripcion } = parseRol(pagoRolRaw);
 
   return {
-    nombres: nombres || nombrePreferencia,
-    apellidos,
+    nombres: finalNombres,
+    apellidos: finalApellidos,
     cedula: null,
     documento_pendiente: true,
     rol,

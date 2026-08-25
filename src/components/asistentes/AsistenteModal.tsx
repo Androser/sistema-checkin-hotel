@@ -599,7 +599,7 @@ export function AsistenteModal({
               </Button>
               <Button
                 onClick={handleSavePasted}
-                disabled={saving}
+                disabled={saving || pasteErrors.length > 0}
                 type="button"
               >
                 <Check className="mr-2 h-4 w-4" />
