@@ -71,6 +71,10 @@ export function AsistenteModal({
   const [pasteText, setPasteText] = useState("");
   const [preview, setPreview] = useState<ParsedRow[] | null>(null);
   const [pasteErrors, setPasteErrors] = useState<string[]>([]);
+  const [debugInfo, setDebugInfo] = useState<
+    { raw: string; columns: number; firstColumns: string[] }[] | null
+  >(null);
+  const [showDebug, setShowDebug] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -129,7 +133,10 @@ export function AsistenteModal({
 
   const handleParse = () => {
     setPasteErrors([]);
+    setDebugInfo(null);
+    setShowDebug(false);
     const result = parseTablaPegada(pasteText);
+    setDebugInfo(result.debug || null);
     if (result.rows.length === 0) {
       setPasteErrors(
         result.errors.length > 0
@@ -419,6 +426,47 @@ export function AsistenteModal({
                   <li key={i}>{err}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {debugInfo && debugInfo.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+              <button
+                type="button"
+                onClick={() => setShowDebug((prev) => !prev)}
+                className="flex w-full items-center justify-between font-medium text-slate-700"
+              >
+                <span>Ver diagnóstico de filas ({debugInfo.length})</span>
+                <span>{showDebug ? "▲" : "▼"}</span>
+              </button>
+              {showDebug && (
+                <div className="mt-2 max-h-60 overflow-auto rounded border border-slate-100 bg-slate-50 p-2">
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="py-1 pr-2">#</th>
+                        <th className="py-1 pr-2">Cols</th>
+                        <th className="py-1 pr-2">Primeras columnas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {debugInfo.map((info, i) => (
+                        <tr key={i}>
+                          <td className="py-1 pr-2 align-top">{i + 1}</td>
+                          <td className="py-1 pr-2 align-top">{info.columns}</td>
+                          <td className="py-1 align-top">
+                            {info.firstColumns.map((c, j) => (
+                              <span key={j} className="mr-1 inline-block rounded bg-white px-1 py-0.5 border border-slate-200">
+                                {c || "(vacío)"}
+                              </span>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

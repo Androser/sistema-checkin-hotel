@@ -1,8 +1,15 @@
 import { AsistenteInsert } from "./types";
 
+export interface ParseDebugInfo {
+  raw: string;
+  columns: number;
+  firstColumns: string[];
+}
+
 export interface ParseResult {
   rows: Partial<AsistenteInsert>[];
   errors: string[];
+  debug?: ParseDebugInfo[];
 }
 
 export type DuplicateAction = "update" | "skip" | "duplicate";
@@ -86,53 +93,73 @@ export function hasMeaningfulChanges(
  * - 20 columnas (sin las 3 primeras columnas)
  */
 export function parseTablaPegada(text: string): ParseResult {
-  const rawRows = text
+  let rawRows = text
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
+  // Si la primera fila parece header, saltarla
+  if (rawRows.length > 0) {
+    const firstColumns = rawRows[0].split("\t").map((c) => c.trim());
+    if (looksLikeHeaderRow(firstColumns)) {
+      rawRows = rawRows.slice(1);
+    }
+  }
+
   const rows: Partial<AsistenteInsert>[] = [];
   const errors: string[] = [];
+  const debug: ParseDebugInfo[] = [];
 
   rawRows.forEach((line, index) => {
-    const parsed = parseFilaTabulada(line);
+    const columns = line.split("\t").map((c) => c.trim());
+    const parsed = parseFilaTabulada(line, { debug: false });
+
+    debug.push({
+      raw: line,
+      columns: columns.length,
+      firstColumns: columns.slice(0, 6),
+    });
+
     if (!parsed) {
-      errors.push(`Fila ${index + 1}: no se pudo reconocer el formato.`);
+      errors.push(
+        `Fila ${index + 1}: no se pudo reconocer el formato. ` +
+          `Tiene ${columns.length} columnas. Primeras: ${columns
+            .slice(0, 5)
+            .map((c) => `"${c}"`)
+            .join(", ")}`
+      );
       return;
     }
     if (!parsed.nombres && !parsed.apellidos) {
-      errors.push(`Fila ${index + 1}: faltan nombres y apellidos.`);
+      errors.push(
+        `Fila ${index + 1}: faltan nombres y apellidos. ` +
+          `Primeras columnas: ${columns
+            .slice(0, 5)
+            .map((c) => `"${c}"`)
+            .join(", ")}`
+      );
       return;
     }
     rows.push(parsed);
   });
 
-  return { rows, errors };
+  return { rows, errors, debug };
 }
 
-function detectOffset(columns: string[]): number {
-  if (columns.length < 23) return 0;
-  const first = columns[0].trim();
-  const second = columns[1].trim();
-  const third = columns[2].trim();
-
-  const looksLikeId = /^\d+$/.test(first);
-  const looksLikeTimestamp = (v: string) =>
-    /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(v) && v.includes(":");
-
-  if (looksLikeId && looksLikeTimestamp(second) && looksLikeTimestamp(third)) {
-    return 3;
-  }
-  return 0;
+function looksLikeTimestamp(value: string): boolean {
+  return /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(value) && value.includes(":");
 }
 
-export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null {
-  const columns = text.split("\t").map((c) => c.trim());
+function looksLikeHeaderRow(columns: string[]): boolean {
+  const first = columns[0].toLowerCase();
+  return first.includes("id") && first.includes("start");
+}
 
-  if (columns.length < 10) return null;
-
-  // Detectar si vienen las 3 columnas iniciales (ID, Start time, Completion time)
-  const offset = detectOffset(columns);
+function parseWithOffset(
+  columns: string[],
+  offset: number
+): Partial<AsistenteInsert> | null {
+  if (columns.length < offset + 10) return null;
 
   const get = (index: number) => columns[index + offset] || "";
 
@@ -155,13 +182,12 @@ export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null
 
   if (!nombres && !apellidos && !estaca) return null;
 
-  const cedula = null; // Microsoft Forms no incluye cédula
   const { rol, rol_descripcion } = parseRol(pagoRolRaw);
 
   return {
     nombres: nombres || nombrePreferencia,
     apellidos,
-    cedula,
+    cedula: null,
     documento_pendiente: true,
     rol,
     rol_descripcion,
@@ -178,6 +204,46 @@ export function parseFilaTabulada(text: string): Partial<AsistenteInsert> | null
     contacto_emergencia_nombre: contactoNombre,
     contacto_emergencia_telefono: limpiarTelefono(contactoTelefono),
   };
+}
+
+function scoreParse(result: Partial<AsistenteInsert> | null): number {
+  if (!result) return 0;
+  let score = 0;
+  if (result.nombres) score += 2;
+  if (result.apellidos) score += 2;
+  if (result.estaca_distrito_mision) score += 1;
+  if (result.sexo) score += 1;
+  if (result.celular) score += 1;
+  return score;
+}
+
+export function parseFilaTabulada(
+  text: string,
+  options: { debug?: boolean } = {}
+): Partial<AsistenteInsert> | null {
+  const columns = text.split("\t").map((c) => c.trim());
+
+  if (columns.length < 10) {
+    if (options.debug) {
+      console.warn("[parseFilaTabulada] menos de 10 columnas:", columns);
+    }
+    return null;
+  }
+
+  // Intentar ambos offsets y quedarse con el que produzca mejor parseo.
+  const candidates = [
+    { offset: 3, result: parseWithOffset(columns, 3) },
+    { offset: 0, result: parseWithOffset(columns, 0) },
+  ];
+
+  candidates.sort((a, b) => scoreParse(b.result) - scoreParse(a.result));
+  const best = candidates[0];
+
+  if (options.debug) {
+    console.log("[parseFilaTabulada] columnas:", columns.length, "candidatos:", candidates);
+  }
+
+  return best.result;
 }
 
 function parseFecha(value: string): string | null {
