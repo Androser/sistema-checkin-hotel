@@ -193,6 +193,18 @@ export function AsistenteModal({
     });
   };
 
+  const setAllActions = (action: DuplicateAction) => {
+    setPreview((prev) => {
+      if (!prev) return prev;
+      return prev.map((item) => {
+        if (!item.match) return item;
+        const hasChanges = hasMeaningfulChanges(item.match.existing, item.row);
+        if (!hasChanges) return item;
+        return { ...item, match: { ...item.match, action } };
+      });
+    });
+  };
+
   const field = (
     label: string,
     name: string,
@@ -412,12 +424,57 @@ export function AsistenteModal({
 
           {preview && preview.length > 0 && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-slate-900">
-                  Asistentes detectados: {preview.length}
-                </h4>
-                <Badge variant="warning">Documento pendiente</Badge>
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">
+                    Asistentes detectados: {preview.length}
+                  </h4>
+                  {(() => {
+                    const duplicates = preview.filter((item) => item.match).length;
+                    if (duplicates === 0) return null;
+                    return (
+                      <p className="text-xs text-slate-500">
+                        {duplicates} ya existen. Aplica una acción masiva:
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="warning">Documento pendiente</Badge>
+                  {preview.some(
+                    (item) =>
+                      item.match && hasMeaningfulChanges(item.match.existing, item.row)
+                  ) && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAllActions("skip")}
+                        type="button"
+                      >
+                        Omitir todos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAllActions("update")}
+                        type="button"
+                      >
+                        Actualizar todos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAllActions("duplicate")}
+                        type="button"
+                      >
+                        Duplicar todos
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+
               <div className="max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-500">
