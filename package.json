@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "generate-qr": "ts-node scripts/generar-qr-tokens.ts",
-    "import-excel": "ts-node scripts/importar-excel.ts"
+    "import-excel": "ts-node scripts/importar-excel.ts",
+    "limpiar-duplicados": "ts-node scripts/limpiar-duplicados.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",

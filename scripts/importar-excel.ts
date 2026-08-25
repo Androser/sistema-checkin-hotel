@@ -40,6 +40,18 @@ function normalizeText(value: any) {
   return String(value || "").trim();
 }
 
+function removeAccents(str: string) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizeName(value: any) {
+  return removeAccents(normalizeText(value).toLowerCase())
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizeDate(value: any): string | null {
   if (!value) return null;
   const d = new Date(value);
@@ -70,35 +82,37 @@ function rowToRecord(row: Record<string, any>) {
   };
 }
 
-async function findExisting(record: ReturnType<typeof rowToRecord>) {
-  if (record.cedula) {
-    const { data } = await supabase
-      .from("asistentes")
-      .select("*")
-      .eq("cedula", record.cedula)
-      .maybeSingle();
-    if (data) return { existing: data, matchedBy: "cédula" };
+function buildMatchKey(record: ReturnType<typeof rowToRecord>) {
+  return {
+    cedula: record.cedula,
+    celular: record.celular,
+    name: normalizeName(`${record.nombres} ${record.apellidos}`),
+  };
+}
+
+function findExisting(
+  record: ReturnType<typeof rowToRecord>,
+  existingList: any[]
+) {
+  const key = buildMatchKey(record);
+  const matches: { existing: any; matchedBy: string }[] = [];
+
+  for (const existing of existingList) {
+    if (key.cedula && normalizeId(existing.cedula) === key.cedula) {
+      matches.push({ existing, matchedBy: "cédula" });
+      continue;
+    }
+    if (key.celular && normalizeId(existing.celular) === key.celular) {
+      matches.push({ existing, matchedBy: "celular" });
+      continue;
+    }
+    const existingName = normalizeName(`${existing.nombres} ${existing.apellidos}`);
+    if (existingName === key.name && key.name.length > 3) {
+      matches.push({ existing, matchedBy: "nombre y apellido" });
+    }
   }
 
-  if (record.celular) {
-    const { data } = await supabase
-      .from("asistentes")
-      .select("*")
-      .eq("celular", record.celular)
-      .maybeSingle();
-    if (data) return { existing: data, matchedBy: "celular" };
-  }
-
-  const { data } = await supabase
-    .from("asistentes")
-    .select("*")
-    .ilike("nombres", record.nombres)
-    .ilike("apellidos", record.apellidos)
-    .maybeSingle();
-
-  if (data) return { existing: data, matchedBy: "nombre y apellido" };
-
-  return null;
+  return matches;
 }
 
 function getChanges(existing: any, record: ReturnType<typeof rowToRecord>) {
@@ -126,12 +140,24 @@ async function main() {
 
   if (!filePath || !fs.existsSync(filePath)) {
     console.error("❌ Debes indicar la ruta de un archivo Excel válido.");
-    console.error("   Ejemplo: npm run import-excel -- ./data/asistentes.xlsx");
+    console.error("   Ejemplo: npx ts-node scripts/importar-excel.ts -- ./data/asistentes.xlsx");
     console.error("   Opciones:");
     console.error("     --dry-run      Muestra qué cambiaría sin hacer nada.");
     console.error("     --yes          Actualiza duplicados automáticamente.");
     process.exit(1);
   }
+
+  console.log("📂 Cargando asistentes existentes desde Supabase...");
+  const { data: existingList, error: loadError } = await supabase
+    .from("asistentes")
+    .select("*");
+
+  if (loadError) {
+    console.error("❌ Error cargando asistentes:", loadError.message);
+    process.exit(1);
+  }
+
+  console.log(`   ${existingList?.length || 0} asistentes encontrados en la base de datos.\n`);
 
   console.log(`📖 Leyendo ${filePath}...`);
 
@@ -163,33 +189,41 @@ async function main() {
     const label = `${record.nombres} ${record.apellidos}`;
     console.log(`[${i + 1}/${validos.length}] ${label}`);
 
-    const found = await findExisting(record);
+    const matches = findExisting(record, existingList || []);
 
-    if (!found) {
+    if (matches.length === 0) {
       if (dryRun) {
         console.log("   🟡 Nuevo (se insertaría)");
         inserted++;
         continue;
       }
 
-      const { error } = await supabase.from("asistentes").insert(record);
+      const { data, error } = await supabase.from("asistentes").insert(record).select("*");
       if (error) {
         console.error(`   ❌ Error insertando: ${error.message}`);
         errors++;
       } else {
         console.log("   ✅ Insertado");
         inserted++;
+        if (data) existingList?.push(data[0]);
       }
       continue;
     }
 
-    const { existing, matchedBy } = found;
-    console.log(`   ⚠️  Ya existe (coincidencia por ${matchedBy})`);
+    if (matches.length > 1) {
+      console.log(`   ⚠️  Se encontraron ${matches.length} coincidencias posibles:`);
+      matches.forEach((m, idx) =>
+        console.log(`      [${idx + 1}] ${m.existing.nombres} ${m.existing.apellidos} (por ${m.matchedBy})`)
+      );
+    } else {
+      console.log(`   ⚠️  Ya existe (coincidencia por ${matches[0].matchedBy})`);
+    }
 
+    const { existing } = matches[0];
     const changes = getChanges(existing, record);
 
     if (changes.length === 0) {
-      console.log("   ⏭️  Datos idénticos, se omite");
+      console.log("   ⏭️  Datos idénticos, se omite\n");
       duplicatesExact++;
       continue;
     }
@@ -214,13 +248,14 @@ async function main() {
       console.log("   ⏭️  Saltado\n");
       skipped++;
     } else if (decision === "d") {
-      const { error } = await supabase.from("asistentes").insert(record);
+      const { data, error } = await supabase.from("asistentes").insert(record).select("*");
       if (error) {
         console.error(`   ❌ Error duplicando: ${error.message}\n`);
         errors++;
       } else {
         console.log("   ✅ Duplicado creado\n");
         inserted++;
+        if (data) existingList?.push(data[0]);
       }
     } else {
       const updatePayload = { ...record };
@@ -237,6 +272,7 @@ async function main() {
       } else {
         console.log("   ✅ Actualizado\n");
         updated++;
+        Object.assign(existing, updatePayload);
       }
     }
   }
