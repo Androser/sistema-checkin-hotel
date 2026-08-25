@@ -295,13 +295,40 @@ export function parseFilaTabulada(
 
 function parseFecha(value: string): string | null {
   if (!value) return null;
-  const match = value.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
+
+  // Ya está en formato ISO
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  return null;
+
+  // Soporta / o - como separador
+  const match = value.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (!match) return null;
+
+  let first = parseInt(match[1], 10);
+  let second = parseInt(match[2], 10);
+  const year = match[3];
+
+  let day: number;
+  let month: number;
+
+  // Detectar formato según valores imposibles:
+  // - Si first > 12, first es el día → formato dd/mm/yyyy
+  // - Si second > 12, second es el día → formato mm/dd/yyyy
+  // - Si ambos <= 12, asumimos dd/mm/yyyy (formato latino)
+  if (first > 12 && second <= 12) {
+    day = first;
+    month = second;
+  } else if (second > 12 && first <= 12) {
+    day = second;
+    month = first;
+  } else {
+    day = first;
+    month = second;
+  }
+
+  // Validación básica de rango
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function parseRol(value: string): { rol: string; rol_descripcion: string | null } {
