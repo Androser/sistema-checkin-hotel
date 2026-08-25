@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { Search, Save, Download, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
@@ -9,11 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HOTEL_INFO, EVENT_INFO } from "@/lib/hotel";
 
+interface Consejero {
+  nombres: string | null;
+  apellidos: string | null;
+  celular: string | null;
+  sexo: string | null;
+}
+
 interface Companero {
   nombres: string | null;
   apellidos: string | null;
-  cama_asignada: string | null;
-  celular: string | null;
+  estaca_distrito_mision: string | null;
+  barrio: string | null;
+  sexo: string | null;
 }
 
 interface AsistenteData {
@@ -24,14 +32,18 @@ interface AsistenteData {
   qr_token: string;
   estaca_distrito_mision: string | null;
   celular: string | null;
+  barrio: string | null;
   tipo_alojamiento: string | null;
   numero_habitacion: string | null;
   cama_asignada: string | null;
+  compania_numero: number | null;
   companeros: Companero[] | null;
+  consejeros: Consejero[] | null;
 }
 
 function QrPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const tokenFromUrl = searchParams.get("token");
 
   const [step, setStep] = useState<"search" | "loading" | "result" | "notfound">(
@@ -45,6 +57,7 @@ function QrPageContent() {
   const [saveMessage, setSaveMessage] = useState("");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     hotel: true,
+    compania: true,
     habitacion: false,
     info: false,
   });
@@ -90,7 +103,7 @@ function QrPageContent() {
         return;
       }
 
-      await showResult(data);
+      router.replace(`/qr?token=${data.qr_token}`);
     } catch {
       setStep("notfound");
     }
@@ -286,6 +299,75 @@ function QrPageContent() {
             </div>
           </Section>
 
+          <Section title="Mi compañía" sectionKey="compania">
+            <div className="space-y-3 text-sm text-slate-700">
+              <p>
+                <span className="font-medium">Compañía:</span>{" "}
+                {asistente.compania_numero ? (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-sm font-semibold text-blue-700">
+                    {asistente.compania_numero}
+                  </span>
+                ) : (
+                  "Por asignar"
+                )}
+              </p>
+
+              {asistente.consejeros && asistente.consejeros.length > 0 && (
+                <div>
+                  <p className="font-medium">Consejeros:</p>
+                  <ul className="mt-1 space-y-2">
+                    {asistente.consejeros.map((c, i) => (
+                      <li key={i} className="rounded-lg bg-slate-50 p-2">
+                        <p className="font-medium text-slate-900">
+                          {c.nombres} {c.apellidos}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {c.celular ? (
+                            <a
+                              href={`https://wa.me/${c.celular.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {c.celular}
+                            </a>
+                          ) : (
+                            "Sin celular"
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {asistente.companeros && asistente.companeros.length > 0 && (
+                <div>
+                  <p className="font-medium">Compañeros de compañía:</p>
+                  <ul className="mt-1 space-y-1">
+                    {asistente.companeros.map((c, i) => (
+                      <li key={i} className="rounded-lg bg-slate-50 p-2">
+                        <p className="font-medium text-slate-900">
+                          {c.nombres} {c.apellidos}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {c.estaca_distrito_mision || "—"}
+                          {c.barrio ? ` · ${c.barrio}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!asistente.compania_numero && (
+                <p className="text-xs text-slate-500">
+                  Aún no has sido asignado a una compañía. Vuelve a consultar más tarde.
+                </p>
+              )}
+            </div>
+          </Section>
+
           <Section title="Mi habitación" sectionKey="habitacion">
             <div className="space-y-3 text-sm text-slate-700">
               <p>
@@ -300,24 +382,6 @@ function QrPageContent() {
                 <span className="font-medium">Cama:</span>{" "}
                 {asistente.cama_asignada || "Por asignar"}
               </p>
-
-              {asistente.companeros && asistente.companeros.length > 0 && (
-                <div className="pt-2">
-                  <p className="font-medium">Compañeros de habitación:</p>
-                  <ul className="mt-1 space-y-1">
-                    {asistente.companeros.map((c, i) => (
-                      <li key={i} className="rounded-lg bg-slate-50 p-2">
-                        <p className="font-medium text-slate-900">
-                          {c.nombres} {c.apellidos}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Cama {c.cama_asignada || "—"} · Celular {c.celular || "—"}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </Section>
 

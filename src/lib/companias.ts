@@ -63,6 +63,17 @@ export async function asignarConsejeros(supabase: any) {
   }
 }
 
+function dividirEnGrupos<T>(lista: T[], numGrupos: number): T[][] {
+  const grupos: T[][] = Array.from({ length: numGrupos }, () => []);
+  if (lista.length === 0) return grupos;
+  const porGrupo = Math.ceil(lista.length / numGrupos);
+  for (let i = 0; i < lista.length; i++) {
+    const grupoIndex = Math.min(Math.floor(i / porGrupo), numGrupos - 1);
+    grupos[grupoIndex].push(lista[i]);
+  }
+  return grupos;
+}
+
 export async function generarCompanias(
   supabase: any,
   options: { soloNuevos?: boolean } = {}
@@ -84,34 +95,28 @@ export async function generarCompanias(
     return;
   }
 
-  // Ordenar por edad ascendente: más jóvenes primero
+  // Ordenar por edad: más jóvenes primero (fecha de nacimiento más reciente)
   const sorted = [...participantes].sort((a, b) => {
     const da = a.fecha_nacimiento ? new Date(a.fecha_nacimiento).getTime() : 0;
     const db = b.fecha_nacimiento ? new Date(b.fecha_nacimiento).getTime() : 0;
-    return db - da; // más jóvenes primero (fecha más reciente)
+    return db - da;
   });
 
-  // Separar por género
+  // Separar por género para mantener equilibrio dentro de cada compañía
   const hombres = sorted.filter((p) => (p.sexo || "").toLowerCase() === "m");
   const mujeres = sorted.filter((p) => (p.sexo || "").toLowerCase() === "f");
 
-  // Crear asignaciones
+  // Dividir cada género en 8 grupos contiguos por edad.
+  // Grupo 0 → compañía 1 (más jóvenes), grupo 7 → compañía 8 (mayores).
+  const gruposHombres = dividirEnGrupos(hombres, 8);
+  const gruposMujeres = dividirEnGrupos(mujeres, 8);
+
   const assignments = new Map<string, number>();
-
-  function assign(list: Asistente[], startCompania: number, direction: number) {
-    let compania = startCompania;
-    for (const p of list) {
-      assignments.set(p.id, compania);
-      compania += direction;
-      if (compania < 1) compania = 8;
-      if (compania > 8) compania = 1;
-    }
+  for (let i = 0; i < 8; i++) {
+    const compania = i + 1;
+    for (const p of gruposHombres[i] || []) assignments.set(p.id, compania);
+    for (const p of gruposMujeres[i] || []) assignments.set(p.id, compania);
   }
-
-  // Asignar hombres de más joven a compañía 1, más viejo a compañía 8
-  assign(hombres, 1, 1);
-  // Asignar mujeres de más joven a compañía 1, más viejo a compañía 8
-  assign(mujeres, 1, 1);
 
   // Aplicar asignaciones
   for (const [id, compania] of assignments) {

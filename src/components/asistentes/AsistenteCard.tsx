@@ -88,6 +88,20 @@ export function AsistenteCard({
               </p>
             </div>
             <div>
+              <p className="text-xs text-slate-400">Rol</p>
+              <p className="font-medium text-slate-700 capitalize">
+                {a.rol || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Compañía</p>
+              <p className="font-medium text-slate-700">
+                {a.rol === "consejero" || a.rol === "participante"
+                  ? a.compania_numero || "Por asignar"
+                  : "—"}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-slate-400">Alojamiento</p>
               <p className="font-medium text-slate-700">
                 {a.tipo_alojamiento || "—"}

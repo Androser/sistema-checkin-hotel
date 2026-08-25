@@ -10,6 +10,7 @@ import {
   EstadoCheckinFilter,
   ESTADOS_CHECKIN,
   TIPOS_ALOJAMIENTO,
+  ROLES,
 } from "@/lib/types";
 
 interface AsistenteFiltersProps {
@@ -21,6 +22,10 @@ interface AsistenteFiltersProps {
   onEstadoChange: (value: EstadoCheckinFilter) => void;
   alojamiento: string;
   onAlojamientoChange: (value: string) => void;
+  rol: string;
+  onRolChange: (value: string) => void;
+  compania: string;
+  onCompaniaChange: (value: string) => void;
   estacas: string[];
 }
 
@@ -33,15 +38,22 @@ export function AsistenteFilters({
   onEstadoChange,
   alojamiento,
   onAlojamientoChange,
+  rol,
+  onRolChange,
+  compania,
+  onCompaniaChange,
   estacas,
 }: AsistenteFiltersProps) {
-  const hasFilters = search || estaca || estado !== "todos" || alojamiento;
+  const hasFilters =
+    search || estaca || estado !== "todos" || alojamiento || rol || compania;
 
   const clearFilters = () => {
     onSearchChange("");
     onEstacaChange("");
     onEstadoChange("todos");
     onAlojamientoChange("");
+    onRolChange("");
+    onCompaniaChange("");
   };
 
   return (
@@ -63,10 +75,7 @@ export function AsistenteFilters({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Select
-          value={estaca}
-          onChange={(e) => onEstacaChange(e.target.value)}
-        >
+        <Select value={estaca} onChange={(e) => onEstacaChange(e.target.value)}>
           <option value="">Todas las estacas</option>
           {estacas.map((e) => (
             <option key={e} value={e}>
@@ -89,14 +98,29 @@ export function AsistenteFilters({
           ))}
         </Select>
 
-        <Select
-          value={alojamiento}
-          onChange={(e) => onAlojamientoChange(e.target.value)}
-        >
+        <Select value={alojamiento} onChange={(e) => onAlojamientoChange(e.target.value)}>
           <option value="">Todos los alojamientos</option>
           {TIPOS_ALOJAMIENTO.map((t) => (
             <option key={t} value={t}>
               {t}
+            </option>
+          ))}
+        </Select>
+
+        <Select value={rol} onChange={(e) => onRolChange(e.target.value)}>
+          <option value="">Todos los roles</option>
+          {ROLES.map((r) => (
+            <option key={r} value={r}>
+              {r.charAt(0).toUpperCase() + r.slice(1)}
+            </option>
+          ))}
+        </Select>
+
+        <Select value={compania} onChange={(e) => onCompaniaChange(e.target.value)}>
+          <option value="">Todas las compañías</option>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+            <option key={c} value={String(c)}>
+              Compañía {c}
             </option>
           ))}
         </Select>
@@ -156,6 +180,28 @@ export function AsistenteFilters({
               {alojamiento}
               <button
                 onClick={() => onAlojamientoChange("")}
+                className="ml-1 hover:text-slate-900"
+              >
+                <X className="inline h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {rol && (
+            <Badge variant="secondary">
+              Rol: {rol}
+              <button
+                onClick={() => onRolChange("")}
+                className="ml-1 hover:text-slate-900"
+              >
+                <X className="inline h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {compania && (
+            <Badge variant="secondary">
+              Compañía {compania}
+              <button
+                onClick={() => onCompaniaChange("")}
                 className="ml-1 hover:text-slate-900"
               >
                 <X className="inline h-3 w-3" />

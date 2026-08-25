@@ -60,7 +60,20 @@ function normalizeDate(value: any): string | null {
   return d.toISOString().split("T")[0];
 }
 
+function parseRol(value: any): { rol: string; rol_descripcion: string | null } {
+  const lower = String(value || "").toLowerCase();
+  if (lower.includes("consejero")) return { rol: "consejero", rol_descripcion: null };
+  if (lower.includes("staff") || lower.includes("coordinador")) {
+    return { rol: "coordinador", rol_descripcion: null };
+  }
+  return { rol: "participante", rol_descripcion: null };
+}
+
 function rowToRecord(row: Record<string, any>) {
+  const pagoRolRaw =
+    row["pago"] ?? row["Pago"] ?? row["rol"] ?? row["Rol"] ?? "";
+  const { rol, rol_descripcion } = parseRol(pagoRolRaw);
+
   return {
     nombres: normalizeText(row["nombres"]),
     apellidos: normalizeText(row["apellidos"]),
@@ -70,6 +83,12 @@ function rowToRecord(row: Record<string, any>) {
     sexo: normalizeText(row["sexo"]) || null,
     celular: normalizeId(row["celular"]) || null,
     correo: normalizeText(row["correo"]) || null,
+    rol,
+    rol_descripcion,
+    barrio:
+      normalizeText(row["barrio"]) ||
+      normalizeText(row["barrio_rama"]) ||
+      null,
     tipo_alojamiento: normalizeText(row["tipo_alojamiento"]) || null,
     numero_habitacion: normalizeText(row["numero_habitacion"]) || null,
     cama_asignada: normalizeText(row["cama_asignada"]) || null,

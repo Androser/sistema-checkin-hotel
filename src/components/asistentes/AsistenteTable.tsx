@@ -51,6 +51,8 @@ export function AsistenteTable({
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium">Nombre</th>
               <th className="px-4 py-3 font-medium">Estaca</th>
+              <th className="px-4 py-3 font-medium">Rol</th>
+              <th className="px-4 py-3 font-medium">Compañía</th>
               <th className="px-4 py-3 font-medium">Habitación</th>
               <th className="px-4 py-3 font-medium">Cédula</th>
               <th className="px-4 py-3 font-medium text-right">Acciones</th>
@@ -98,6 +100,18 @@ export function AsistenteTable({
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {a.estaca_distrito_mision}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  <Badge variant={a.rol === "consejero" ? "warning" : a.rol === "coordinador" ? "secondary" : "default"}>
+                    {a.rol || "Participante"}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  {a.compania_numero ? (
+                    <span className="font-medium">Compañía {a.compania_numero}</span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {a.tipo_alojamiento && (

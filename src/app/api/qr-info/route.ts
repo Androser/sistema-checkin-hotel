@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data: asistente, error } = await supabase
       .from("asistentes")
       .select(
-        "id, nombres, apellidos, cedula, qr_token, estaca_distrito_mision, celular, tipo_alojamiento, numero_habitacion, cama_asignada"
+        "id, nombres, apellidos, cedula, qr_token, estaca_distrito_mision, celular, barrio, tipo_alojamiento, numero_habitacion, cama_asignada, compania_numero, rol"
       )
       .eq("qr_token", token)
       .single();
@@ -32,18 +32,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let companeros = null;
-    if (asistente.tipo_alojamiento && asistente.numero_habitacion) {
-      const { data: roommates } = await supabase
+    let companeros: any[] | null = null;
+    let consejeros: any[] | null = null;
+
+    if (asistente.compania_numero) {
+      const { data: advisors } = await supabase
         .from("asistentes")
-        .select("nombres, apellidos, cama_asignada, celular")
-        .eq("tipo_alojamiento", asistente.tipo_alojamiento)
-        .eq("numero_habitacion", asistente.numero_habitacion)
-        .neq("id", asistente.id);
-      companeros = roommates;
+        .select("nombres, apellidos, celular, sexo")
+        .eq("rol", "consejero")
+        .eq("compania_numero", asistente.compania_numero);
+      consejeros = advisors || null;
+
+      const { data: companyMates } = await supabase
+        .from("asistentes")
+        .select("nombres, apellidos, estaca_distrito_mision, barrio, sexo")
+        .eq("compania_numero", asistente.compania_numero)
+        .neq("id", asistente.id)
+        .neq("rol", "consejero");
+      companeros = companyMates || null;
     }
 
-    return NextResponse.json({ ...asistente, companeros });
+    return NextResponse.json({ ...asistente, companeros, consejeros });
   } catch (err: any) {
     console.error("Error en qr-info:", err);
     return NextResponse.json(

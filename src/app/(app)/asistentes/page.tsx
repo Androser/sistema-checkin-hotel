@@ -15,6 +15,7 @@ import { ReenviarQrModal } from "@/components/asistentes/ReenviarQrModal";
 import { BulkSendModal } from "@/components/asistentes/BulkSendModal";
 import { createClient } from "@/lib/supabase/client";
 import { formatFullName } from "@/lib/utils";
+import { generarCompanias } from "@/lib/companias";
 
 export default function AsistentesPage() {
   const { asistentes, loading, error, refetch } = useAsistentes();
@@ -24,6 +25,9 @@ export default function AsistentesPage() {
   const [estaca, setEstaca] = useState("");
   const [estado, setEstado] = useState<EstadoCheckinFilter>("todos");
   const [alojamiento, setAlojamiento] = useState("");
+  const [rol, setRol] = useState("");
+  const [compania, setCompania] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Asistente | null>(null);
@@ -57,9 +61,19 @@ export default function AsistentesPage() {
         (estado === "checkout" && a.estado_checkout);
       const matchesAlojamiento =
         !alojamiento || a.tipo_alojamiento === alojamiento;
-      return matchesSearch && matchesEstaca && matchesEstado && matchesAlojamiento;
+      const matchesRol = !rol || a.rol === rol;
+      const matchesCompania =
+        !compania || String(a.compania_numero) === compania;
+      return (
+        matchesSearch &&
+        matchesEstaca &&
+        matchesEstado &&
+        matchesAlojamiento &&
+        matchesRol &&
+        matchesCompania
+      );
     });
-  }, [asistentes, search, estaca, estado, alojamiento]);
+  }, [asistentes, search, estaca, estado, alojamiento, rol, compania]);
 
   function cleanData<T extends Record<string, any>>(data: T): T {
     const cleaned = { ...data };
@@ -184,6 +198,26 @@ export default function AsistentesPage() {
     [asistentes, selectedIds]
   );
 
+  const consejerosFiltrados = useMemo(() => {
+    if (!compania) return [];
+    return asistentes.filter(
+      (a) => a.rol === "consejero" && String(a.compania_numero) === compania
+    );
+  }, [asistentes, compania]);
+
+  const handleGenerarCompanias = async () => {
+    setGenerating(true);
+    try {
+      await generarCompanias(supabase, { soloNuevos: false });
+      refetch();
+    } catch (err: any) {
+      console.error("Error generando compañías:", err);
+      setSaveError(err.message || "Error al generar compañías.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -212,6 +246,14 @@ export default function AsistentesPage() {
             <Send className="mr-2 h-4 w-4" />
             Enviar QR ({selectedAsistentes.length})
           </Button>
+          <Button
+            variant="secondary"
+            onClick={handleGenerarCompanias}
+            disabled={generating}
+          >
+            <Users className="mr-2 h-4 w-4" />
+            {generating ? "Generando..." : "Generar compañías"}
+          </Button>
         </div>
       </motion.div>
 
@@ -237,8 +279,32 @@ export default function AsistentesPage() {
         onEstadoChange={setEstado}
         alojamiento={alojamiento}
         onAlojamientoChange={setAlojamiento}
+        rol={rol}
+        onRolChange={setRol}
+        compania={compania}
+        onCompaniaChange={setCompania}
         estacas={estacas}
       />
+
+      {compania && consejerosFiltrados.length > 0 && (
+        <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-amber-900">
+            Consejeros de la Compañía {compania}
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {consejerosFiltrados.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-lg bg-white p-3 shadow-sm"
+              >
+                <p className="font-medium text-slate-900">{formatFullName(c)}</p>
+                <p className="text-sm text-slate-500">{c.estaca_distrito_mision}</p>
+                <p className="text-sm text-slate-600">Celular: {c.celular || "—"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between text-sm text-slate-500">
         <span className="flex items-center gap-2">
