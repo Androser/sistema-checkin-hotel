@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import { SITE_URL } from "@/lib/site";
+import { buildWhatsAppMessage } from "@/lib/hotel";
 
 interface ReenviarQrModalProps {
   open: boolean;
@@ -63,13 +64,7 @@ export function ReenviarQrModal({ open, onClose, asistente }: ReenviarQrModalPro
     link.click();
   };
 
-  const whatsappText = encodeURIComponent(
-    `Hola ${formatFullName(asistente)},\n\n` +
-      `Este es tu código de acceso para el evento hotelero. ` +
-      `Abre el enlace, guarda el QR en pantalla y muéstralo al personal al llegar a la entrada:\n\n` +
-      `${qrLink}\n\n` +
-      `No compartas este enlace con otras personas.`
-  );
+  const whatsappText = encodeURIComponent(buildWhatsAppMessage(formatFullName(asistente), qrLink));
 
   return (
     <Modal

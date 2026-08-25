@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import { SITE_URL } from "@/lib/site";
+import { buildWhatsAppMessage } from "@/lib/hotel";
 
 interface BulkSendModalProps {
   open: boolean;
@@ -46,13 +47,7 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
 
   const handleOpenWhatsApp = () => {
     if (!current || !qrLink) return;
-    const text = encodeURIComponent(
-      `Hola ${formatFullName(current)},\n\n` +
-        `Este es tu código de acceso para el evento hotelero. ` +
-        `Abre el enlace, guarda el QR en pantalla y muéstralo al personal al llegar a la entrada:\n\n` +
-        `${qrLink}\n\n` +
-        `No compartas este enlace con otras personas.`
-    );
+    const text = encodeURIComponent(buildWhatsAppMessage(formatFullName(current), qrLink));
     const phone = (current.celular || "").replace(/\D/g, "");
     window.open(`https://wa.me/${phone}?text=${text}`, "_blank", "noopener,noreferrer");
   };

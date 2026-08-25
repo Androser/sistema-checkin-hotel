@@ -7,7 +7,7 @@ import QRCode from "qrcode";
 import { Search, Save, Download, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HOTEL_INFO } from "@/lib/hotel";
+import { HOTEL_INFO, EVENT_INFO } from "@/lib/hotel";
 
 interface Companero {
   nombres: string | null;
@@ -191,6 +191,7 @@ function QrPageContent() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
         <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
           <div className="mb-6 text-center">
+            <p className="text-sm font-medium text-blue-600">{EVENT_INFO.nombre}</p>
             <h1 className="text-2xl font-bold text-slate-900">Buscar mi QR</h1>
             <p className="mt-1 text-slate-500">
               Ingresa tu cédula o número de celular para ver tu código de acceso.
@@ -225,11 +226,11 @@ function QrPageContent() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 pb-8">
       <div className="mx-auto max-w-md space-y-4">
-        {/* Encabezado hotel */}
+        {/* Encabezado */}
         <div className="rounded-3xl bg-white p-6 shadow-xl text-center">
-          <p className="text-sm text-slate-400">Bienvenido(a)</p>
+          <p className="text-sm font-medium text-blue-600">{EVENT_INFO.nombre}</p>
           <h1 className="text-xl font-bold text-slate-900">{HOTEL_INFO.nombre}</h1>
-          <p className="mt-1 text-lg font-semibold text-slate-800">{fullName}</p>
+          <p className="mt-2 text-lg font-semibold text-slate-800">{fullName}</p>
           {asistente.estaca_distrito_mision && (
             <p className="text-sm text-slate-500">{asistente.estaca_distrito_mision}</p>
           )}
