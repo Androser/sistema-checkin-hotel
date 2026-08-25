@@ -1,11 +1,21 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Pencil, Trash2, QrCode, HeartPulse } from "lucide-react";
+import { Pencil, Trash2, QrCode, HeartPulse, ArrowUp, ArrowDown } from "lucide-react";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
+type SortField =
+  | "estado"
+  | "nombre"
+  | "estaca"
+  | "rol"
+  | "compania"
+  | "habitacion"
+  | "cedula";
+type SortDirection = "asc" | "desc";
 
 interface AsistenteTableProps {
   asistentes: Asistente[];
@@ -16,6 +26,8 @@ interface AsistenteTableProps {
   onDelete: (asistente: Asistente) => void;
   onViewMedical: (asistente: Asistente) => void;
   onResendQr: (asistente: Asistente) => void;
+  sort: { field: SortField; direction: SortDirection };
+  onSort: (field: SortField) => void;
 }
 
 export function AsistenteTable({
@@ -27,9 +39,39 @@ export function AsistenteTable({
   onDelete,
   onViewMedical,
   onResendQr,
+  sort,
+  onSort,
 }: AsistenteTableProps) {
   const allSelected = asistentes.length > 0 && asistentes.every((a) => selectedIds.has(a.id));
   const someSelected = asistentes.some((a) => selectedIds.has(a.id)) && !allSelected;
+
+  const SortHeader = ({
+    field,
+    children,
+    className = "",
+  }: {
+    field: SortField;
+    children: React.ReactNode;
+    className?: string;
+  }) => {
+    const active = sort.field === field;
+    return (
+      <th
+        className={`cursor-pointer select-none px-4 py-3 font-medium hover:bg-slate-100 ${className}`}
+        onClick={() => onSort(field)}
+      >
+        <div className="flex items-center gap-1">
+          {children}
+          {active &&
+            (sort.direction === "asc" ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDown className="h-3.5 w-3.5" />
+            ))}
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="hidden overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm md:block">
@@ -48,13 +90,13 @@ export function AsistenteTable({
                   className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                 />
               </th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Estaca</th>
-              <th className="px-4 py-3 font-medium">Rol</th>
-              <th className="px-4 py-3 font-medium">Compañía</th>
-              <th className="px-4 py-3 font-medium">Habitación</th>
-              <th className="px-4 py-3 font-medium">Cédula</th>
+              <SortHeader field="estado">Estado</SortHeader>
+              <SortHeader field="nombre">Nombre</SortHeader>
+              <SortHeader field="estaca">Estaca</SortHeader>
+              <SortHeader field="rol">Rol</SortHeader>
+              <SortHeader field="compania">Compañía</SortHeader>
+              <SortHeader field="habitacion">Habitación</SortHeader>
+              <SortHeader field="cedula">Cédula</SortHeader>
               <th className="px-4 py-3 font-medium text-right">Acciones</th>
             </tr>
           </thead>

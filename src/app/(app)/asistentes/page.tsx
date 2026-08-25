@@ -29,6 +29,27 @@ export default function AsistentesPage() {
   const [compania, setCompania] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  type SortField =
+    | "estado"
+    | "nombre"
+    | "estaca"
+    | "rol"
+    | "compania"
+    | "habitacion"
+    | "cedula";
+  type SortDirection = "asc" | "desc";
+  const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
+    field: "nombre",
+    direction: "asc",
+  });
+
+  const handleSort = (field: SortField) => {
+    setSort((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Asistente | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
@@ -47,7 +68,7 @@ export default function AsistentesPage() {
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
-    return asistentes.filter((a) => {
+    const result = asistentes.filter((a) => {
       const matchesSearch =
         !term ||
         a.nombres.toLowerCase().includes(term) ||
@@ -73,7 +94,46 @@ export default function AsistentesPage() {
         matchesCompania
       );
     });
-  }, [asistentes, search, estaca, estado, alojamiento, rol, compania]);
+
+    result.sort((a, b) => {
+      const dir = sort.direction === "asc" ? 1 : -1;
+      switch (sort.field) {
+        case "estado": {
+          const sa = a.estado_checkout ? 2 : a.estado_checkin ? 1 : 0;
+          const sb = b.estado_checkout ? 2 : b.estado_checkin ? 1 : 0;
+          return (sa - sb) * dir;
+        }
+        case "nombre":
+          return (
+            `${a.apellidos} ${a.nombres}`.localeCompare(
+              `${b.apellidos} ${b.nombres}`
+            ) * dir
+          );
+        case "estaca":
+          return (a.estaca_distrito_mision || "").localeCompare(
+            b.estaca_distrito_mision || ""
+          ) * dir;
+        case "rol":
+          return (a.rol || "").localeCompare(b.rol || "") * dir;
+        case "compania":
+          return (
+            ((a.compania_numero || 0) - (b.compania_numero || 0)) * dir
+          );
+        case "habitacion":
+          return (
+            `${a.tipo_alojamiento || ""} ${a.numero_habitacion || ""}`.localeCompare(
+              `${b.tipo_alojamiento || ""} ${b.numero_habitacion || ""}`
+            ) * dir
+          );
+        case "cedula":
+          return (a.cedula || "").localeCompare(b.cedula || "") * dir;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [asistentes, search, estaca, estado, alojamiento, rol, compania, sort]);
 
   function cleanData<T extends Record<string, any>>(data: T): T {
     const cleaned = { ...data };
@@ -333,6 +393,8 @@ export default function AsistentesPage() {
         onDelete={setDeleteConfirm}
         onViewMedical={openMedical}
         onResendQr={openQr}
+        sort={sort}
+        onSort={handleSort}
       />
 
       <div className="grid gap-4 md:hidden">
