@@ -85,37 +85,79 @@ export function hasMeaningfulChanges(
 }
 
 /**
+ * Parsea texto TSV respetando comillas dobles.
+ * Permite saltos de línea y tabulaciones dentro de celdas entrecomilladas.
+ * Soporta "" como escape para una comilla doble literal.
+ */
+function parseTSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"' && nextChar === '"') {
+      currentCell += '"';
+      i++; // saltar la segunda comilla
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === '\t' && !inQuotes) {
+      currentRow.push(currentCell);
+      currentCell = "";
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++; // saltar el \n del \r\n
+      }
+      currentRow.push(currentCell);
+      if (currentRow.some((c) => c.trim().length > 0)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = "";
+    } else {
+      currentCell += char;
+    }
+  }
+
+  // Vaciar lo que quede al final
+  currentRow.push(currentCell);
+  if (currentRow.some((c) => c.trim().length > 0)) {
+    rows.push(currentRow);
+  }
+
+  return rows;
+}
+
+/**
  * Parsea una o varias filas copiadas desde una tabla (Excel, Forms, etc.)
- * usando tabulaciones como separador de columnas y saltos de línea como separador de filas.
+ * usando tabulaciones como separador de columnas.
  *
+ * Soporta celdas con saltos de línea si vienen entrecomilladas.
  * Soporta dos formatos:
  * - 23 columnas (con ID, Start time, Completion time al inicio)
  * - 20 columnas (sin las 3 primeras columnas)
  */
 export function parseTablaPegada(text: string): ParseResult {
-  let rawRows = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  let rawRows = parseTSV(text).map((row) => row.map((c) => c.trim()));
+  rawRows = rawRows.filter((row) => row.some((c) => c.length > 0));
 
   // Si la primera fila parece header, saltarla
-  if (rawRows.length > 0) {
-    const firstColumns = rawRows[0].split("\t").map((c) => c.trim());
-    if (looksLikeHeaderRow(firstColumns)) {
-      rawRows = rawRows.slice(1);
-    }
+  if (rawRows.length > 0 && looksLikeHeaderRow(rawRows[0])) {
+    rawRows = rawRows.slice(1);
   }
 
   const rows: Partial<AsistenteInsert>[] = [];
   const errors: string[] = [];
   const debug: ParseDebugInfo[] = [];
 
-  rawRows.forEach((line, index) => {
-    const columns = line.split("\t").map((c) => c.trim());
-    const parsed = parseFilaTabulada(line, { debug: false });
+  rawRows.forEach((columns, index) => {
+    const parsed = parseFilaTabulada(columns, { debug: false });
 
     debug.push({
-      raw: line,
+      raw: columns.join("\t"),
       columns: columns.length,
       firstColumns: columns.slice(0, 6),
     });
@@ -218,29 +260,34 @@ function scoreParse(result: Partial<AsistenteInsert> | null): number {
 }
 
 export function parseFilaTabulada(
-  text: string,
+  columns: string[],
   options: { debug?: boolean } = {}
 ): Partial<AsistenteInsert> | null {
-  const columns = text.split("\t").map((c) => c.trim());
+  const trimmedColumns = columns.map((c) => c.trim());
 
-  if (columns.length < 10) {
+  if (trimmedColumns.length < 10) {
     if (options.debug) {
-      console.warn("[parseFilaTabulada] menos de 10 columnas:", columns);
+      console.warn("[parseFilaTabulada] menos de 10 columnas:", trimmedColumns);
     }
     return null;
   }
 
   // Intentar ambos offsets y quedarse con el que produzca mejor parseo.
   const candidates = [
-    { offset: 3, result: parseWithOffset(columns, 3) },
-    { offset: 0, result: parseWithOffset(columns, 0) },
+    { offset: 3, result: parseWithOffset(trimmedColumns, 3) },
+    { offset: 0, result: parseWithOffset(trimmedColumns, 0) },
   ];
 
   candidates.sort((a, b) => scoreParse(b.result) - scoreParse(a.result));
   const best = candidates[0];
 
   if (options.debug) {
-    console.log("[parseFilaTabulada] columnas:", columns.length, "candidatos:", candidates);
+    console.log(
+      "[parseFilaTabulada] columnas:",
+      trimmedColumns.length,
+      "candidatos:",
+      candidates
+    );
   }
 
   return best.result;
