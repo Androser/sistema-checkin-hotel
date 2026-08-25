@@ -95,13 +95,28 @@ export default function AsistentesPage() {
     }
   };
 
-  const handleSaveMultiple = async (data: Partial<Asistente>[]) => {
-    if (data.length === 0) return;
+  const handleSaveMultiple = async (data: {
+    insert: Partial<Asistente>[];
+    update: { id: string; data: Partial<Asistente> }[];
+  }) => {
     setSaveError(null);
     try {
-      const cleanedRows = data.map(cleanData);
-      const { error } = await supabase.from("asistentes").insert(cleanedRows as any);
-      if (error) throw error;
+      if (data.insert.length > 0) {
+        const cleanedRows = data.insert.map(cleanData);
+        const { error } = await supabase.from("asistentes").insert(cleanedRows as any);
+        if (error) throw error;
+      }
+
+      for (const item of data.update) {
+        const cleaned = cleanData(item.data);
+        delete (cleaned as any).id;
+        const { error } = await supabase
+          .from("asistentes")
+          .update(cleaned as any)
+          .eq("id", item.id);
+        if (error) throw error;
+      }
+
       setModalOpen(false);
       refetch();
     } catch (err: any) {
@@ -273,6 +288,7 @@ export default function AsistentesPage() {
           setSaveError(null);
         }}
         asistente={editing}
+        existingAsistentes={asistentes}
         onSave={handleSave}
         onSaveMultiple={handleSaveMultiple}
         saveError={saveError}

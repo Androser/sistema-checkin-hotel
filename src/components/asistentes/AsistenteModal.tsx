@@ -14,14 +14,21 @@ import {
   GRUPOS_SANGUINEOS,
 } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
-import { parseTablaPegada } from "@/lib/importHelpers";
+import {
+  parseTablaPegada,
+  findDuplicates,
+  hasMeaningfulChanges,
+  ParsedRow,
+  DuplicateAction,
+} from "@/lib/importHelpers";
 
 interface AsistenteModalProps {
   open: boolean;
   onClose: () => void;
   asistente: Asistente | null;
+  existingAsistentes?: Asistente[];
   onSave: (data: Partial<Asistente>) => void;
-  onSaveMultiple?: (data: Partial<Asistente>[]) => void;
+  onSaveMultiple?: (data: { insert: Partial<Asistente>[]; update: { id: string; data: Partial<Asistente> }[] }) => void;
   saveError?: string | null;
 }
 
@@ -50,6 +57,7 @@ export function AsistenteModal({
   open,
   onClose,
   asistente,
+  existingAsistentes,
   onSave,
   onSaveMultiple,
   saveError,
@@ -61,7 +69,7 @@ export function AsistenteModal({
 
   // Pegar tabla
   const [pasteText, setPasteText] = useState("");
-  const [preview, setPreview] = useState<Partial<Asistente>[] | null>(null);
+  const [preview, setPreview] = useState<ParsedRow[] | null>(null);
   const [pasteErrors, setPasteErrors] = useState<string[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -131,7 +139,8 @@ export function AsistenteModal({
       setPreview(null);
       return;
     }
-    setPreview(result.rows);
+    const withDuplicates = findDuplicates(result.rows, existingAsistentes || []);
+    setPreview(withDuplicates);
     setPasteErrors(result.errors);
   };
 
@@ -153,10 +162,35 @@ export function AsistenteModal({
     setSaving(true);
     setLocalError(null);
     try {
-      await onSaveMultiple(preview);
+      const insert: Partial<Asistente>[] = [];
+      const update: { id: string; data: Partial<Asistente> }[] = [];
+
+      for (const item of preview) {
+        if (!item.match) {
+          insert.push(item.row);
+        } else if (item.match.action === "update") {
+          update.push({ id: item.match.existing.id, data: item.row });
+        } else if (item.match.action === "duplicate") {
+          insert.push(item.row);
+        }
+      }
+
+      await onSaveMultiple({ insert, update });
     } finally {
       setSaving(false);
     }
+  };
+
+  const setAction = (index: number, action: DuplicateAction) => {
+    setPreview((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const item = next[index];
+      if (item.match) {
+        next[index] = { ...item, match: { ...item.match, action } };
+      }
+      return next;
+    });
   };
 
   const field = (
@@ -384,7 +418,7 @@ export function AsistenteModal({
                 </h4>
                 <Badge variant="warning">Documento pendiente</Badge>
               </div>
-              <div className="max-h-60 overflow-auto rounded-lg border border-slate-200 bg-white">
+              <div className="max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
@@ -392,38 +426,96 @@ export function AsistenteModal({
                       <th className="px-3 py-2">Apellidos</th>
                       <th className="px-3 py-2">Estaca</th>
                       <th className="px-3 py-2">Celular</th>
+                      <th className="px-3 py-2">Estado</th>
+                      <th className="px-3 py-2">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {preview.map((row, i) => (
-                      <tr key={i}>
-                        <td className="px-3 py-2">{row.nombres}</td>
-                        <td className="px-3 py-2">{row.apellidos}</td>
-                        <td className="px-3 py-2">{row.estaca_distrito_mision}</td>
-                        <td className="px-3 py-2">{row.celular}</td>
-                      </tr>
-                    ))}
+                    {preview.map((item, i) => {
+                      const row = item.row;
+                      const match = item.match;
+                      const hasChanges = match ? hasMeaningfulChanges(match.existing, row) : false;
+
+                      let statusBadge;
+                      if (!match) {
+                        statusBadge = <Badge variant="success">Nuevo</Badge>;
+                      } else if (!hasChanges) {
+                        statusBadge = <Badge variant="secondary">Idéntico</Badge>;
+                      } else {
+                        statusBadge = <Badge variant="warning">Diferente</Badge>;
+                      }
+
+                      return (
+                        <tr key={i}>
+                          <td className="px-3 py-2">{row.nombres}</td>
+                          <td className="px-3 py-2">{row.apellidos}</td>
+                          <td className="px-3 py-2">{row.estaca_distrito_mision}</td>
+                          <td className="px-3 py-2">{row.celular}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-col gap-1">
+                              {statusBadge}
+                              {match && (
+                                <span className="text-xs text-slate-400">
+                                  Coincide por {match.matchedBy}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            {!match ? (
+                              <span className="text-xs text-slate-400">Insertar</span>
+                            ) : !hasChanges ? (
+                              <span className="text-xs text-slate-400">Omitir</span>
+                            ) : (
+                              <Select
+                                value={match.action}
+                                onChange={(e) => setAction(i, e.target.value as DuplicateAction)}
+                                className="text-xs"
+                              >
+                                <option value="skip">Omitir</option>
+                                <option value="update">Actualizar</option>
+                                <option value="duplicate">Duplicar</option>
+                              </Select>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={onClose} type="button">
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSavePasted}
-              disabled={!preview || preview.length === 0 || saving}
-              type="button"
-            >
-              <Check className="mr-2 h-4 w-4" />
-              {saving
-                ? "Guardando..."
-                : `Crear ${preview?.length || 0} asistentes`}
-            </Button>
-          </div>
+          {preview && preview.length > 0 && (
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={onClose} type="button">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSavePasted}
+                disabled={saving}
+                type="button"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                {saving
+                  ? "Guardando..."
+                  : (() => {
+                      let insert = 0;
+                      let update = 0;
+                      for (const item of preview) {
+                        if (!item.match) insert++;
+                        else if (item.match.action === "update") update++;
+                        else if (item.match.action === "duplicate") insert++;
+                      }
+                      if (update > 0) {
+                        return `Guardar: ${insert} nuevo(s) / ${update} actualizado(s)`;
+                      }
+                      return `Guardar ${insert} asistente(s)`;
+                    })()}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Modal>

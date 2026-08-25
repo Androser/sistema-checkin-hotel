@@ -5,6 +5,70 @@ export interface ParseResult {
   errors: string[];
 }
 
+export type DuplicateAction = "update" | "skip" | "duplicate";
+
+export interface DuplicateMatch {
+  existing: any;
+  matchedBy: "cédula" | "celular" | "nombre";
+  action: DuplicateAction;
+}
+
+export interface ParsedRow {
+  row: Partial<AsistenteInsert>;
+  match: DuplicateMatch | null;
+}
+
+function removeAccents(str: string) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function normalizeName(value: string) {
+  return removeAccents(value.toLowerCase()).replace(/\s+/g, " ").trim();
+}
+
+export function normalizeId(value: string) {
+  return value.replace(/\D/g, "").trim();
+}
+
+export function findDuplicates(
+  rows: Partial<AsistenteInsert>[],
+  existing: any[]
+): ParsedRow[] {
+  return rows.map((row) => {
+    const cedula = normalizeId(row.cedula || "");
+    const celular = normalizeId(row.celular || "");
+    const name = normalizeName(`${row.nombres || ""} ${row.apellidos || ""}`);
+
+    for (const ex of existing) {
+      if (cedula && normalizeId(ex.cedula || "") === cedula) {
+        return { row, match: { existing: ex, matchedBy: "cédula", action: "skip" } };
+      }
+      if (celular && normalizeId(ex.celular || "") === celular) {
+        return { row, match: { existing: ex, matchedBy: "celular", action: "skip" } };
+      }
+      const existingName = normalizeName(`${ex.nombres || ""} ${ex.apellidos || ""}`);
+      if (existingName && existingName === name && name.length > 3) {
+        return { row, match: { existing: ex, matchedBy: "nombre", action: "skip" } };
+      }
+    }
+
+    return { row, match: null };
+  });
+}
+
+export function hasMeaningfulChanges(
+  existing: any,
+  row: Partial<AsistenteInsert>
+): boolean {
+  const keys = Object.keys(row) as (keyof AsistenteInsert)[];
+  for (const key of keys) {
+    const a = String(existing[key] ?? "").trim();
+    const b = String(row[key] ?? "").trim();
+    if (a !== b) return true;
+  }
+  return false;
+}
+
 /**
  * Parsea una o varias filas copiadas desde una tabla (Excel, Forms, etc.)
  * usando tabulaciones como separador de columnas y saltos de línea como separador de filas.
