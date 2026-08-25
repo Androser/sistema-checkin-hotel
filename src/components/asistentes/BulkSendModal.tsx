@@ -34,7 +34,7 @@ export function BulkSendModal({ open, onClose, asistentes }: BulkSendModalProps)
       qrLink: `${siteUrl}/qr?token=${current.qr_token}`,
       imageUrl: `/api/qr?token=${current.qr_token}&n=${displayName}`,
     };
-  }, [current]);
+  }, [current, siteUrl]);
 
   useEffect(() => {
     if (open) {
