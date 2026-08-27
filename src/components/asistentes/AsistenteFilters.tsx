@@ -26,6 +26,8 @@ interface AsistenteFiltersProps {
   onRolChange: (value: string) => void;
   compania: string;
   onCompaniaChange: (value: string) => void;
+  cancelado: string;
+  onCanceladoChange: (value: string) => void;
   estacas: string[];
 }
 
@@ -42,10 +44,12 @@ export function AsistenteFilters({
   onRolChange,
   compania,
   onCompaniaChange,
+  cancelado,
+  onCanceladoChange,
   estacas,
 }: AsistenteFiltersProps) {
   const hasFilters =
-    search || estaca || estado !== "todos" || alojamiento || rol || compania;
+    search || estaca || estado !== "todos" || alojamiento || rol || compania || cancelado !== "activos";
 
   const clearFilters = () => {
     onSearchChange("");
@@ -54,6 +58,7 @@ export function AsistenteFilters({
     onAlojamientoChange("");
     onRolChange("");
     onCompaniaChange("");
+    onCanceladoChange("activos");
   };
 
   return (
@@ -123,6 +128,12 @@ export function AsistenteFilters({
               Compañía {c}
             </option>
           ))}
+        </Select>
+
+        <Select value={cancelado} onChange={(e) => onCanceladoChange(e.target.value)}>
+          <option value="activos">Activos</option>
+          <option value="cancelados">Cancelados</option>
+          <option value="todos">Todos</option>
         </Select>
 
         <div className="flex items-center">
@@ -202,6 +213,17 @@ export function AsistenteFilters({
               Compañía {compania}
               <button
                 onClick={() => onCompaniaChange("")}
+                className="ml-1 hover:text-slate-900"
+              >
+                <X className="inline h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {cancelado !== "activos" && (
+            <Badge variant="secondary">
+              {cancelado === "cancelados" ? "Cancelados" : "Todos"}
+              <button
+                onClick={() => onCanceladoChange("activos")}
                 className="ml-1 hover:text-slate-900"
               >
                 <X className="inline h-3 w-3" />

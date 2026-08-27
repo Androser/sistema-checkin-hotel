@@ -11,10 +11,15 @@ import { calcularEdad } from "@/lib/utils";
 export default function CompaniasPage() {
   const { asistentes, loading, error } = useAsistentes();
 
+  const activos = useMemo(
+    () => asistentes.filter((a) => !a.cancelado),
+    [asistentes]
+  );
+
   const stats = useMemo(() => {
-    const participantes = asistentes.filter((a) => a.rol !== "coordinador");
-    const consejeros = asistentes.filter((a) => a.rol === "consejero");
-    const coordinadores = asistentes.filter((a) => a.rol === "coordinador");
+    const participantes = activos.filter((a) => a.rol !== "coordinador");
+    const consejeros = activos.filter((a) => a.rol === "consejero");
+    const coordinadores = activos.filter((a) => a.rol === "coordinador");
 
     const conCompania = participantes.filter((a) => a.compania_numero).length;
     const promedioPorCompania = Math.round(conCompania / 8);
@@ -33,20 +38,20 @@ export default function CompaniasPage() {
       maxCompania,
       minCompania,
     };
-  }, [asistentes]);
+  }, [activos]);
 
   const companias = useMemo(() => {
     return [1, 2, 3, 4, 5, 6, 7, 8].map((numero) => ({
       numero,
-      consejeros: asistentes.filter(
+      consejeros: activos.filter(
         (a) => a.rol === "consejero" && a.compania_numero === numero
       ),
-      participantes: asistentes.filter(
+      participantes: activos.filter(
         (a) =>
           a.rol !== "coordinador" && a.compania_numero === numero
       ),
     }));
-  }, [asistentes]);
+  }, [activos]);
 
   if (loading) {
     return (

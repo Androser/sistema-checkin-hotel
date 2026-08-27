@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Eye, Pencil, Trash2, QrCode, HeartPulse } from "lucide-react";
+import { Pencil, QrCode, HeartPulse, UserX, UserCheck } from "lucide-react";
 import { Asistente } from "@/lib/types";
 import { formatDate, formatFullName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ interface AsistenteCardProps {
   selected: boolean;
   onSelect: (id: string, selected: boolean) => void;
   onEdit: (asistente: Asistente) => void;
-  onDelete: (asistente: Asistente) => void;
+  onToggleCancelado: (asistente: Asistente) => void;
   onViewMedical: (asistente: Asistente) => void;
   onResendQr: (asistente: Asistente) => void;
 }
@@ -25,7 +25,7 @@ export function AsistenteCard({
   selected,
   onSelect,
   onEdit,
-  onDelete,
+  onToggleCancelado,
   onViewMedical,
   onResendQr,
 }: AsistenteCardProps) {
@@ -61,6 +61,9 @@ export function AsistenteCard({
                   <h3 className="truncate text-base font-semibold text-slate-900">
                     {formatFullName(a)}
                   </h3>
+                  {a.cancelado && (
+                    <Badge variant="destructive">Cancelado</Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   {a.estaca_distrito_mision}
@@ -164,11 +167,24 @@ export function AsistenteCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onDelete(a)}
-              className="h-11 border-red-200 text-red-600 hover:bg-red-50"
+              onClick={() => onToggleCancelado(a)}
+              className={`h-11 ${
+                a.cancelado
+                  ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                  : "border-amber-200 text-amber-600 hover:bg-amber-50"
+              }`}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
+              {a.cancelado ? (
+                <>
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Reactivar
+                </>
+              ) : (
+                <>
+                  <UserX className="mr-2 h-4 w-4" />
+                  Cancelar
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

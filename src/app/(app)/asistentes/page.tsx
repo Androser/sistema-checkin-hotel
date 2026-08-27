@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Users, Send } from "lucide-react";
+import { Plus, Users, Send, FileDown } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAsistentes } from "@/hooks/useAsistentes";
 import { Asistente, EstadoCheckinFilter } from "@/lib/types";
@@ -31,6 +31,7 @@ export default function AsistentesPage() {
   const [alojamiento, setAlojamiento] = useState("");
   const [rol, setRol] = useState("");
   const [compania, setCompania] = useState("");
+  const [cancelado, setCancelado] = useState("activos");
   const [generating, setGenerating] = useState(false);
 
   type SortField =
@@ -69,7 +70,6 @@ export default function AsistentesPage() {
   const [medicalAsistente, setMedicalAsistente] = useState<Asistente | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrAsistente, setQrAsistente] = useState<Asistente | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Asistente | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -78,6 +78,39 @@ export default function AsistentesPage() {
     () => Array.from(new Set(asistentes.map((a) => a.estaca_distrito_mision))).sort(),
     [asistentes]
   );
+
+  const activeAsistentes = useMemo(
+    () => asistentes.filter((a) => !a.cancelado),
+    [asistentes]
+  );
+
+  const cedulaStats = useMemo(() => {
+    const total = activeAsistentes.length;
+    const conCedula = activeAsistentes.filter(
+      (a) => a.cedula && a.cedula.trim() !== ""
+    ).length;
+    const porCompania = [1, 2, 3, 4, 5, 6, 7, 8].map((numero) => {
+      const miembros = activeAsistentes.filter(
+        (a) => a.compania_numero === numero
+      );
+      const conCedulaComp = miembros.filter(
+        (a) => a.cedula && a.cedula.trim() !== ""
+      ).length;
+      return {
+        numero,
+        total: miembros.length,
+        conCedula: conCedulaComp,
+        porcentaje: miembros.length > 0 ? Math.round((conCedulaComp / miembros.length) * 100) : 0,
+      };
+    });
+    return {
+      total,
+      conCedula,
+      pendientes: total - conCedula,
+      porcentaje: total > 0 ? Math.round((conCedula / total) * 100) : 0,
+      porCompania,
+    };
+  }, [activeAsistentes]);
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
@@ -98,13 +131,18 @@ export default function AsistentesPage() {
       const matchesRol = !rol || a.rol === rol;
       const matchesCompania =
         !compania || String(a.compania_numero) === compania;
+      const matchesCancelado =
+        cancelado === "todos" ||
+        (cancelado === "activos" && !a.cancelado) ||
+        (cancelado === "cancelados" && a.cancelado);
       return (
         matchesSearch &&
         matchesEstaca &&
         matchesEstado &&
         matchesAlojamiento &&
         matchesRol &&
-        matchesCompania
+        matchesCompania &&
+        matchesCancelado
       );
     });
 
@@ -148,7 +186,7 @@ export default function AsistentesPage() {
     });
 
     return result;
-  }, [asistentes, search, estaca, estado, alojamiento, rol, compania, sort]);
+  }, [asistentes, search, estaca, estado, alojamiento, rol, compania, cancelado, sort]);
 
   function cleanData<T extends Record<string, any>>(data: T): T {
     const cleaned = { ...data };
@@ -236,9 +274,16 @@ export default function AsistentesPage() {
     return message;
   }
 
-  const handleDelete = async (a: Asistente) => {
-    await supabase.from("asistentes").delete().eq("id", a.id);
-    setDeleteConfirm(null);
+  const handleToggleCancelado = async (a: Asistente) => {
+    const { error } = await supabase
+      .from("asistentes")
+      .update({ cancelado: !a.cancelado } as any)
+      .eq("id", a.id);
+    if (error) {
+      console.error("Error cambiando estado cancelado:", error);
+      setSaveError("No se pudo cambiar el estado del asistente.");
+      return;
+    }
     refetch();
   };
 
@@ -280,14 +325,14 @@ export default function AsistentesPage() {
   };
 
   const selectedAsistentes = useMemo(
-    () => asistentes.filter((a) => selectedIds.has(a.id)),
-    [asistentes, selectedIds]
+    () => activeAsistentes.filter((a) => selectedIds.has(a.id)),
+    [activeAsistentes, selectedIds]
   );
 
   const miembrosCompania = useMemo(() => {
     if (!compania) return [];
-    return asistentes.filter((a) => String(a.compania_numero) === compania);
-  }, [asistentes, compania]);
+    return activeAsistentes.filter((a) => String(a.compania_numero) === compania);
+  }, [activeAsistentes, compania]);
 
   const consejerosFiltrados = useMemo(
     () => miembrosCompania.filter((a) => a.rol === "consejero"),
@@ -310,7 +355,7 @@ export default function AsistentesPage() {
   const handleGenerarCompanias = async () => {
     setGenerating(true);
     try {
-      await generarCompanias(supabase, { soloNuevos: false });
+      await generarCompanias(supabase, { soloNuevos: true });
       refetch();
     } catch (err: any) {
       console.error("Error generando compañías:", err);
@@ -318,6 +363,94 @@ export default function AsistentesPage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const exportarCSV = () => {
+    const headers = [
+      "ID",
+      "Nombres",
+      "Apellidos",
+      "Cedula",
+      "DocumentoPendiente",
+      "EstacaDistritoMision",
+      "FechaNacimiento",
+      "Sexo",
+      "Celular",
+      "Correo",
+      "Rol",
+      "DescripcionRol",
+      "Compania",
+      "TipoAlojamiento",
+      "NumeroHabitacion",
+      "CamaAsignada",
+      "GrupoSanguineo",
+      "EPSSeguro",
+      "EnfermedadCronica",
+      "TratamientoMedico",
+      "Alergias",
+      "ContactoEmergenciaNombre",
+      "ContactoEmergenciaTelefono",
+      "EstadoCheckin",
+      "CheckinAt",
+      "EstadoCheckout",
+      "CheckoutAt",
+      "Cancelado",
+      "CreatedAt",
+      "UpdatedAt",
+    ];
+
+    const rows = filtered.map((a) => [
+      a.id,
+      a.nombres,
+      a.apellidos,
+      a.cedula || "",
+      a.documento_pendiente ? "Si" : "No",
+      a.estaca_distrito_mision,
+      a.fecha_nacimiento || "",
+      a.sexo || "",
+      a.celular || "",
+      a.correo || "",
+      a.rol || "",
+      a.rol_descripcion || "",
+      a.compania_numero?.toString() || "",
+      a.tipo_alojamiento || "",
+      a.numero_habitacion || "",
+      a.cama_asignada || "",
+      a.grupo_sanguineo || "",
+      a.eps_seguro || "",
+      a.enfermedad_cronica || "",
+      a.tratamiento_medico || "",
+      a.alergias || "",
+      a.contacto_emergencia_nombre || "",
+      a.contacto_emergencia_telefono || "",
+      a.estado_checkin ? "Si" : "No",
+      a.checkin_at || "",
+      a.estado_checkout ? "Si" : "No",
+      a.checkout_at || "",
+      a.cancelado ? "Si" : "No",
+      a.created_at,
+      a.updated_at,
+    ]);
+
+    const escape = (value: string) => {
+      const str = String(value ?? "");
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csv = [headers.join(","), ...rows.map((row) => row.map(escape).join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    link.href = url;
+    link.download = `asistentes_${timestamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -348,13 +481,17 @@ export default function AsistentesPage() {
             <Send className="mr-2 h-4 w-4" />
             Enviar QR ({selectedAsistentes.length})
           </Button>
+          <Button variant="outline" onClick={exportarCSV}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </Button>
           <Button
             variant="secondary"
             onClick={handleGenerarCompanias}
             disabled={generating}
           >
             <Users className="mr-2 h-4 w-4" />
-            {generating ? "Generando..." : "Generar compañías"}
+            {generating ? "Asignando..." : "Asignar a compañía participantes faltantes"}
           </Button>
         </div>
       </motion.div>
@@ -385,8 +522,85 @@ export default function AsistentesPage() {
         onRolChange={setRol}
         compania={compania}
         onCompaniaChange={setCompania}
+        cancelado={cancelado}
+        onCanceladoChange={setCancelado}
         estacas={estacas}
       />
+
+      {/* KPIs de cédulas */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-500">Total activos</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {cedulaStats.total}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-500">Cédulas recolectadas</p>
+          <p className="text-2xl font-bold text-emerald-600">
+            {cedulaStats.conCedula}
+          </p>
+          <p className="text-xs text-slate-500">
+            {cedulaStats.porcentaje}% del total
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-500">Cédulas pendientes</p>
+          <p className="text-2xl font-bold text-amber-600">
+            {cedulaStats.pendientes}
+          </p>
+          <p className="text-xs text-slate-500">
+            {cedulaStats.total > 0
+              ? Math.round((cedulaStats.pendientes / cedulaStats.total) * 100)
+              : 0}% del total
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-500">Progreso total</p>
+          <div className="mt-2 h-2.5 w-full rounded-full bg-slate-100">
+            <div
+              className="h-2.5 rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${cedulaStats.porcentaje}%` }}
+            />
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {cedulaStats.porcentaje}%
+          </p>
+        </div>
+      </div>
+
+      {/* Cédulas por compañía */}
+      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">
+          Cédulas recolectadas por compañía
+        </h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {cedulaStats.porCompania.map((c) => (
+            <div
+              key={c.numero}
+              className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-900">
+                  Compañía {c.numero}
+                </span>
+                <span className="text-sm font-bold text-emerald-600">
+                  {c.porcentaje}%
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                {c.conCedula} de {c.total}
+              </p>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200">
+                <div
+                  className="h-1.5 rounded-full bg-emerald-500 transition-all"
+                  style={{ width: `${c.porcentaje}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {compania && (
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
@@ -438,7 +652,7 @@ export default function AsistentesPage() {
         onSelect={toggleSelect}
         onSelectAll={selectAll}
         onEdit={openEdit}
-        onDelete={setDeleteConfirm}
+        onToggleCancelado={handleToggleCancelado}
         onViewMedical={openMedical}
         onResendQr={openQr}
         sort={sort}
@@ -454,7 +668,7 @@ export default function AsistentesPage() {
             selected={selectedIds.has(a.id)}
             onSelect={toggleSelect}
             onEdit={openEdit}
-            onDelete={setDeleteConfirm}
+            onToggleCancelado={handleToggleCancelado}
             onViewMedical={openMedical}
             onResendQr={openQr}
           />
@@ -499,36 +713,6 @@ export default function AsistentesPage() {
         asistentes={selectedAsistentes}
         allAsistentes={asistentes}
       />
-
-      {/* Modal de confirmación de eliminación */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-            onClick={() => setDeleteConfirm(null)}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900">
-              ¿Eliminar asistente?
-            </h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Esta acción no se puede deshacer. Se eliminará a{" "}
-              <strong>{formatFullName(deleteConfirm)}</strong>.
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={() => handleDelete(deleteConfirm)}>
-                Eliminar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

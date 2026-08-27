@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import {
   GRUPOS_SANGUINEOS,
   ROLES,
 } from "@/lib/types";
-import { formatFullName } from "@/lib/utils";
+import { formatFullName, calcularEdad } from "@/lib/utils";
 import {
   parseTablaPegada,
   findDuplicates,
@@ -223,6 +223,33 @@ export function AsistenteModal({
     });
   };
 
+  const companiasStats = useMemo(() => {
+    const base = existingAsistentes || [];
+    const activos = base.filter((a) => !a.cancelado);
+    return [1, 2, 3, 4, 5, 6, 7, 8].map((numero) => {
+      const miembros = activos.filter((a) => a.compania_numero === numero);
+      const hombres = miembros.filter((a) => (a.sexo || "").toLowerCase() === "m").length;
+      const mujeres = miembros.filter((a) => (a.sexo || "").toLowerCase() === "f").length;
+      const edades = miembros
+        .map((a) => calcularEdad(a.fecha_nacimiento))
+        .filter((e): e is number => e !== null);
+      const edadMin = edades.length > 0 ? Math.min(...edades) : null;
+      const edadMax = edades.length > 0 ? Math.max(...edades) : null;
+      return {
+        numero,
+        total: miembros.length,
+        hombres,
+        mujeres,
+        edadMin,
+        edadMax,
+      };
+    });
+  }, [existingAsistentes]);
+
+  const selectedCompania = form.compania_numero
+    ? companiasStats.find((c) => c.numero === parseInt(form.compania_numero, 10))
+    : null;
+
   const field = (
     label: string,
     name: string,
@@ -335,30 +362,86 @@ export function AsistenteModal({
                 </Select>
               </div>
 
-              {(form.rol === "consejero" || form.rol === "participante") && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">
-                    Compañía
-                  </label>
-                  <Select
-                    name="compania_numero"
-                    value={form.compania_numero}
-                    onChange={handleChange}
-                  >
-                    <option value="">Sin compañía</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
-                      <option key={c} value={String(c)}>
-                        Compañía {c}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">
+                  Compañía
+                </label>
+                <Select
+                  name="compania_numero"
+                  value={form.compania_numero}
+                  onChange={handleChange}
+                >
+                  <option value="">Sin compañía</option>
+                  {companiasStats.map((c) => (
+                    <option key={c.numero} value={String(c.numero)}>
+                      Compañía {c.numero} ({c.total} miembros)
+                    </option>
+                  ))}
+                </Select>
+              </div>
 
               {form.rol === "coordinador" && (
                 <>
                   {field("Descripción del rol", "rol_descripcion")}
                 </>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                Distribución por compañía
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {companiasStats.map((c) => {
+                  const isSelected =
+                    form.compania_numero === String(c.numero);
+                  return (
+                    <button
+                      key={c.numero}
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          compania_numero: isSelected ? "" : String(c.numero),
+                        }))
+                      }
+                      className={`rounded-lg border p-2 text-left text-sm transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-900">
+                          Compañía {c.numero}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {c.total}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                        <span>{c.hombres} H</span>
+                        <span>·</span>
+                        <span>{c.mujeres} M</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {c.edadMin !== null && c.edadMax !== null
+                          ? `${c.edadMin} - ${c.edadMax} años`
+                          : "Sin edad"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedCompania && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Se asignará a la{" "}
+                  <strong>Compañía {selectedCompania.numero}</strong> con{" "}
+                  {selectedCompania.hombres} hombre
+                  {selectedCompania.hombres !== 1 && "s"} y{" "}
+                  {selectedCompania.mujeres} mujer
+                  {selectedCompania.mujeres !== 1 && "es"}.
+                </p>
               )}
             </div>
           </div>

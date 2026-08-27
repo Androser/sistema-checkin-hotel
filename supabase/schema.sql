@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.asistentes (
   checkin_at TIMESTAMPTZ,
   estado_checkout BOOLEAN DEFAULT FALSE,
   checkout_at TIMESTAMPTZ,
+  cancelado BOOLEAN DEFAULT FALSE,
 
   -- Ficha médica
   grupo_sanguineo TEXT,

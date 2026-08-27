@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Pencil, Trash2, QrCode, HeartPulse, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, QrCode, HeartPulse, ArrowUp, ArrowDown, UserX, UserCheck } from "lucide-react";
 import { Asistente } from "@/lib/types";
 import { formatFullName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ interface AsistenteTableProps {
   onSelect: (id: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
   onEdit: (asistente: Asistente) => void;
-  onDelete: (asistente: Asistente) => void;
+  onToggleCancelado: (asistente: Asistente) => void;
   onViewMedical: (asistente: Asistente) => void;
   onResendQr: (asistente: Asistente) => void;
   sort: { field: SortField; direction: SortDirection };
@@ -37,7 +37,7 @@ export function AsistenteTable({
   onSelect,
   onSelectAll,
   onEdit,
-  onDelete,
+  onToggleCancelado,
   onViewMedical,
   onResendQr,
   sort,
@@ -140,7 +140,12 @@ export function AsistenteTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-900">
-                  {formatFullName(a)}
+                  <div className="flex items-center gap-2">
+                    {formatFullName(a)}
+                    {a.cancelado && (
+                      <Badge variant="destructive">Cancelado</Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {a.estaca_distrito_mision}
@@ -206,10 +211,14 @@ export function AsistenteTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onDelete(a)}
-                      title="Eliminar"
+                      onClick={() => onToggleCancelado(a)}
+                      title={a.cancelado ? "Reactivar" : "Cancelar"}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      {a.cancelado ? (
+                        <UserCheck className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <UserX className="h-4 w-4 text-amber-500" />
+                      )}
                     </Button>
                   </div>
                 </td>

@@ -20,13 +20,15 @@ interface OccupancyChartProps {
 export function OccupancyChart({ asistentes }: OccupancyChartProps) {
   const dataMap = new Map<string, { estaca: string; total: number; ingresados: number }>();
 
-  asistentes.forEach((a) => {
-    const key = a.estaca_distrito_mision || "Sin estaca";
-    const current = dataMap.get(key) || { estaca: key, total: 0, ingresados: 0 };
-    current.total += 1;
-    if (a.estado_checkin) current.ingresados += 1;
-    dataMap.set(key, current);
-  });
+  asistentes
+    .filter((a) => !a.cancelado)
+    .forEach((a) => {
+      const key = a.estaca_distrito_mision || "Sin estaca";
+      const current = dataMap.get(key) || { estaca: key, total: 0, ingresados: 0 };
+      current.total += 1;
+      if (a.estado_checkin) current.ingresados += 1;
+      dataMap.set(key, current);
+    });
 
   const data = Array.from(dataMap.values()).sort((a, b) => b.total - a.total);
 

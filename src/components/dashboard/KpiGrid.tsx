@@ -10,11 +10,12 @@ interface KpiGridProps {
 }
 
 export function KpiGrid({ asistentes }: KpiGridProps) {
-  const total = asistentes.length;
-  const checkins = asistentes.filter((a) => a.estado_checkin).length;
-  const checkouts = asistentes.filter((a) => a.estado_checkout).length;
+  const activos = asistentes.filter((a) => !a.cancelado);
+  const total = activos.length;
+  const checkins = activos.filter((a) => a.estado_checkin).length;
+  const checkouts = activos.filter((a) => a.estado_checkout).length;
   const pendientes = total - checkins;
-  const ocupados = asistentes.filter(
+  const ocupados = activos.filter(
     (a) => a.numero_habitacion && a.numero_habitacion.trim() !== ""
   ).length;
 

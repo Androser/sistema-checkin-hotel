@@ -23,8 +23,9 @@ interface CompaniaChartsProps {
 const COLORS = ["#2563EB", "#EC4899", "#059669", "#D97706", "#7C3AED"];
 
 export function CompaniaCharts({ asistentes }: CompaniaChartsProps) {
-  // Participantes por compañía (excluyendo coordinadores)
-  const participantes = asistentes.filter((a) => a.rol !== "coordinador");
+  // Participantes por compañía (excluyendo coordinadores y cancelados)
+  const activos = asistentes.filter((a) => !a.cancelado);
+  const participantes = activos.filter((a) => a.rol !== "coordinador");
 
   const porCompania = [1, 2, 3, 4, 5, 6, 7, 8].map((numero) => ({
     compania: `C${numero}`,
@@ -34,10 +35,10 @@ export function CompaniaCharts({ asistentes }: CompaniaChartsProps) {
   }));
 
   // Género total
-  const hombres = asistentes.filter(
+  const hombres = activos.filter(
     (a) => (a.sexo || "").toLowerCase() === "m"
   ).length;
-  const mujeres = asistentes.filter(
+  const mujeres = activos.filter(
     (a) => (a.sexo || "").toLowerCase() === "f"
   ).length;
   const generoData = [

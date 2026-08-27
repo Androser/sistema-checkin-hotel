@@ -26,7 +26,8 @@ export async function asignarConsejeros(supabase: any) {
   const { data: consejeros, error } = await supabase
     .from("asistentes")
     .select("id, nombres, apellidos, sexo, rol")
-    .eq("rol", "consejero");
+    .eq("rol", "consejero")
+    .eq("cancelado", false);
 
   if (error) throw error;
   if (!consejeros || consejeros.length === 0) {
@@ -82,8 +83,9 @@ export async function generarCompanias(
 ) {
   let query = supabase
     .from("asistentes")
-    .select("id, nombres, apellidos, sexo, fecha_nacimiento, compania_numero, rol")
-    .eq("rol", "participante");
+    .select("id, nombres, apellidos, sexo, fecha_nacimiento, compania_numero, rol, cancelado")
+    .eq("rol", "participante")
+    .eq("cancelado", false);
 
   if (options.soloNuevos) {
     query = query.is("compania_numero", null);

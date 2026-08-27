@@ -35,6 +35,7 @@ export interface Database {
           checkin_at: string | null;
           estado_checkout: boolean;
           checkout_at: string | null;
+          cancelado: boolean;
           grupo_sanguineo: string | null;
           eps_seguro: string | null;
           enfermedad_cronica: string | null;
@@ -70,6 +71,7 @@ export interface Database {
           checkin_at?: string | null;
           estado_checkout?: boolean;
           checkout_at?: string | null;
+          cancelado?: boolean;
           grupo_sanguineo?: string | null;
           eps_seguro?: string | null;
           enfermedad_cronica?: string | null;
@@ -105,6 +107,7 @@ export interface Database {
           checkin_at?: string | null;
           estado_checkout?: boolean;
           checkout_at?: string | null;
+          cancelado?: boolean;
           grupo_sanguineo?: string | null;
           eps_seguro?: string | null;
           enfermedad_cronica?: string | null;
