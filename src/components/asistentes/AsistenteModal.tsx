@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, Fragment } from "react";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,41 @@ export function AsistenteModal({
   const [localError, setLocalError] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [missingRows, setMissingRows] = useState<MissingRow[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: React.ReactNode;
+    onConfirm: () => void;
+    confirmText?: string;
+    variant?: "danger" | "warning" | "default";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    description: React.ReactNode,
+    onConfirm: () => void,
+    confirmText = "Confirmar",
+    variant: "danger" | "warning" | "default" = "warning"
+  ) => {
+    setConfirmDialog({
+      open: true,
+      title,
+      description,
+      onConfirm: () => {
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        onConfirm();
+      },
+      confirmText,
+      variant,
+    });
+  };
+
+  const closeConfirm = () => setConfirmDialog((prev) => ({ ...prev, open: false }));
 
   useEffect(() => {
     if (saveError) setLocalError(saveError);
@@ -216,7 +252,7 @@ export function AsistenteModal({
     }
   };
 
-  const handleSavePasted = async () => {
+  const doSavePasted = async () => {
     if ((!preview || preview.length === 0) && missingRows.length === 0) return;
     if (!onSaveMultiple) return;
     setSaving(true);
@@ -264,6 +300,29 @@ export function AsistenteModal({
     }
   };
 
+  const handleSavePasted = () => {
+    const cancel = missingRows.filter((m) => m.action === "cancel").length;
+    const del = missingRows.filter((m) => m.action === "delete").length;
+    if (cancel > 0 || del > 0) {
+      showConfirm(
+        "Acciones destructivas pendientes",
+        <>
+          Estás a punto de aplicar{" "}
+          <strong>{cancel > 0 ? `${cancel} cancelación(es)` : ""}</strong>
+          {cancel > 0 && del > 0 ? " y " : ""}
+          <strong>{del > 0 ? `${del} eliminación(es)` : ""}</strong> en la base de datos.
+          <br />
+          Estos cambios afectan el conteo de asistentes, compañías y reportes. ¿Deseas continuar?
+        </>,
+        doSavePasted,
+        "Sí, guardar cambios",
+        "danger"
+      );
+    } else {
+      doSavePasted();
+    }
+  };
+
   const setAction = (index: number, action: DuplicateAction) => {
     setPreview((prev) => {
       if (!prev) return prev;
@@ -293,20 +352,109 @@ export function AsistenteModal({
     });
   };
 
+  const handleMissingActionChange = (
+    index: number,
+    action: MissingRow["action"]
+  ) => {
+    if (action === "delete") {
+      const a = missingRows[index]?.existing;
+      showConfirm(
+        "Eliminar asistente",
+        <>
+          Vas a marcar para <strong>eliminar</strong> a{" "}
+          <strong>{a ? formatFullName(a) : "este asistente"}</strong> de la base de datos.
+          <br />
+          Esta acción borra el registro físicamente. ¿Continuar?
+        </>,
+        () => setMissingAction(index, "delete"),
+        "Sí, eliminar",
+        "danger"
+      );
+    } else {
+      setMissingAction(index, action);
+    }
+  };
+
   const setAllMissingActions = (action: MissingRow["action"]) => {
-    setMissingRows((prev) => prev.map((item) => ({ ...item, action })));
+    const affected = missingRows.filter(
+      (item) => !item.existing.cancelado && item.action !== action
+    ).length;
+    const apply = () => setMissingRows((prev) => prev.map((item) => ({ ...item, action })));
+    if (action === "cancel" && affected > 0) {
+      showConfirm(
+        "Cancelar todos los faltantes",
+        <>
+          Se marcarán como cancelados <strong>{affected} asistente(s)</strong> que están en la base de datos pero no en la tabla pegada.
+          <br />
+          Dejarán de aparecer en conteos, compañías y reportes. ¿Continuar?
+        </>,
+        apply,
+        "Sí, cancelar todos",
+        "danger"
+      );
+    } else if (action === "delete" && affected > 0) {
+      showConfirm(
+        "Eliminar todos los faltantes",
+        <>
+          Se <strong>eliminarán físicamente</strong> <strong>{affected} asistente(s)</strong> de la base de datos.
+          <br />
+          Esta acción no se puede deshacer. ¿Continuar?
+        </>,
+        apply,
+        "Sí, eliminar todos",
+        "danger"
+      );
+    } else {
+      apply();
+    }
   };
 
   const setAllActions = (action: DuplicateAction) => {
-    setPreview((prev) => {
-      if (!prev) return prev;
-      return prev.map((item) => {
-        if (!item.match) return item;
-        const hasChanges = hasMeaningfulChanges(item.match.existing, item.row);
-        if (!hasChanges) return item;
-        return { ...item, match: { ...item.match, action } };
+    const apply = () =>
+      setPreview((prev) => {
+        if (!prev) return prev;
+        return prev.map((item) => {
+          if (!item.match) return item;
+          const hasChanges = hasMeaningfulChanges(item.match.existing, item.row);
+          if (!hasChanges) return item;
+          return { ...item, match: { ...item.match, action } };
+        });
       });
-    });
+
+    const affected = (preview || []).filter(
+      (item) =>
+        item.match &&
+        hasMeaningfulChanges(item.match.existing, item.row) &&
+        item.match.action !== action
+    ).length;
+
+    if (action === "update" && affected > 0) {
+      showConfirm(
+        "Actualizar todos los duplicados",
+        <>
+          Se actualizarán <strong>{affected} asistente(s)</strong> existentes con la información de la tabla pegada.
+          <br />
+          Los campos vacíos en la tabla no borrarán datos existentes, pero los demás campos sí se sobrescribirán. ¿Continuar?
+        </>,
+        apply,
+        "Sí, actualizar todos",
+        "warning"
+      );
+    } else if (action === "duplicate" && affected > 0) {
+      showConfirm(
+        "Duplicar todos los duplicados",
+        <>
+          Se crearán <strong>{affected} registro(s) nuevo(s)</strong> para asistentes que ya existen en la base de datos.
+          <br />
+          Esto puede generar personas repetidas. ¿Continuar?
+        </>,
+        apply,
+        "Sí, duplicar todos",
+        "danger"
+      );
+    } else {
+      apply();
+    }
   };
 
   const companiasStats = useMemo(() => {
@@ -927,7 +1075,7 @@ export function AsistenteModal({
                               <Select
                                 value={item.action}
                                 onChange={(e) =>
-                                  setMissingAction(i, e.target.value as MissingRow["action"])
+                                  handleMissingActionChange(i, e.target.value as MissingRow["action"])
                                 }
                                 className="text-xs"
                               >
@@ -986,6 +1134,16 @@ export function AsistenteModal({
           ) : null}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onClose={closeConfirm}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
+      />
     </Modal>
   );
 }

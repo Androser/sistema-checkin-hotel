@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAsistentes } from "@/hooks/useAsistentes";
 import { Asistente, EstadoCheckinFilter } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AsistenteFilters } from "@/components/asistentes/AsistenteFilters";
 import { AsistenteTable } from "@/components/asistentes/AsistenteTable";
 import { AsistenteCard } from "@/components/asistentes/AsistenteCard";
@@ -73,6 +74,42 @@ export default function AsistentesPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: React.ReactNode;
+    onConfirm: () => void;
+    confirmText?: string;
+    variant?: "danger" | "warning" | "default";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (
+    title: string,
+    description: React.ReactNode,
+    onConfirm: () => void,
+    confirmText = "Confirmar",
+    variant: "danger" | "warning" | "default" = "warning"
+  ) => {
+    setConfirmDialog({
+      open: true,
+      title,
+      description,
+      onConfirm: () => {
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+        onConfirm();
+      },
+      confirmText,
+      variant,
+    });
+  };
+
+  const closeConfirm = () => setConfirmDialog((prev) => ({ ...prev, open: false }));
 
   const estacas = useMemo(
     () => Array.from(new Set(asistentes.map((a) => a.estaca_distrito_mision))).sort(),
@@ -370,7 +407,7 @@ export default function AsistentesPage() {
     [miembrosCompania]
   );
 
-  const handleGenerarCompanias = async () => {
+  const doGenerarCompanias = async () => {
     setGenerating(true);
     try {
       await generarCompanias(supabase, { soloNuevos: true });
@@ -381,6 +418,27 @@ export default function AsistentesPage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleGenerarCompanias = () => {
+    const sinCompania = activeAsistentes.filter(
+      (a) =>
+        a.rol !== "coordinador" &&
+        (a.compania_numero === null || a.compania_numero === undefined)
+    ).length;
+    showConfirm(
+      "Asignar compañías a participantes faltantes",
+      <>
+        Se asignarán compañías solo a los participantes/consejeros que aún no tengan una.
+        <br />
+        Actualmente hay <strong>{sinCompania} asistente(s)</strong> sin compañía.
+        <br />
+        Los que ya tienen compañía no se verán afectados. ¿Continuar?
+      </>,
+      doGenerarCompanias,
+      "Sí, asignar",
+      "warning"
+    );
   };
 
   const exportarCSV = () => {
@@ -495,7 +553,19 @@ export default function AsistentesPage() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => setBulkOpen(true)}
+            onClick={() =>
+              showConfirm(
+                "Enviar QR masivo",
+                <>
+                  Vas a enviar el código QR a <strong>{selectedAsistentes.length} asistente(s)</strong> seleccionado(s).
+                  <br />
+                  Asegúrate de que tengan número de celular y WhatsApp disponible. ¿Continuar?
+                </>,
+                () => setBulkOpen(true),
+                "Sí, enviar",
+                "warning"
+              )
+            }
             disabled={selectedAsistentes.length === 0}
           >
             <Send className="mr-2 h-4 w-4" />
@@ -732,6 +802,16 @@ export default function AsistentesPage() {
         onClose={() => setBulkOpen(false)}
         asistentes={selectedAsistentes}
         allAsistentes={asistentes}
+      />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onClose={closeConfirm}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
       />
     </div>
   );
