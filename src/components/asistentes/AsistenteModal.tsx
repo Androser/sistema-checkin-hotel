@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -19,6 +19,7 @@ import {
   parseTablaPegada,
   findDuplicates,
   hasMeaningfulChanges,
+  getMeaningfulChanges,
   ParsedRow,
   DuplicateAction,
 } from "@/lib/importHelpers";
@@ -57,6 +58,31 @@ const initialForm = {
   contacto_emergencia_telefono: "",
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  nombres: "Nombres",
+  apellidos: "Apellidos",
+  cedula: "Cédula",
+  estaca_distrito_mision: "Estaca",
+  fecha_nacimiento: "Fecha de nacimiento",
+  sexo: "Sexo",
+  celular: "Celular",
+  correo: "Correo",
+  rol: "Rol",
+  rol_descripcion: "Descripción del rol",
+  compania_numero: "Compañía",
+  tipo_alojamiento: "Alojamiento",
+  numero_habitacion: "Habitación",
+  cama_asignada: "Cama",
+  grupo_sanguineo: "Grupo sanguíneo",
+  eps_seguro: "EPS/Seguro",
+  enfermedad_cronica: "Enfermedad crónica",
+  tratamiento_medico: "Tratamiento médico",
+  alergias: "Alergias",
+  contacto_emergencia_nombre: "Contacto emergencia",
+  contacto_emergencia_telefono: "Tel. emergencia",
+  barrio: "Barrio",
+};
+
 export function AsistenteModal({
   open,
   onClose,
@@ -80,6 +106,7 @@ export function AsistenteModal({
   >(null);
   const [showDebug, setShowDebug] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (saveError) setLocalError(saveError);
@@ -91,6 +118,7 @@ export function AsistenteModal({
       setPasteText("");
       setPreview(null);
       setPasteErrors([]);
+      setExpandedRows(new Set());
       if (asistente) {
         setForm({
           nombres: asistente.nombres || "",
@@ -146,6 +174,7 @@ export function AsistenteModal({
     setPasteErrors([]);
     setDebugInfo(null);
     setShowDebug(false);
+    setExpandedRows(new Set());
     const result = parseTablaPegada(pasteText);
     setDebugInfo(result.debug || null);
     if (result.rows.length === 0) {
@@ -220,6 +249,15 @@ export function AsistenteModal({
       if (item.match) {
         next[index] = { ...item, match: { ...item.match, action } };
       }
+      return next;
+    });
+  };
+
+  const toggleRow = (index: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
       return next;
     });
   };
@@ -691,7 +729,9 @@ export function AsistenteModal({
                     {preview.map((item, i) => {
                       const row = item.row;
                       const match = item.match;
-                      const hasChanges = match ? hasMeaningfulChanges(match.existing, row) : false;
+                      const changes = match ? getMeaningfulChanges(match.existing, row) : [];
+                      const hasChanges = changes.length > 0;
+                      const isExpanded = expandedRows.has(i);
 
                       let statusBadge;
                       if (!match) {
@@ -703,39 +743,81 @@ export function AsistenteModal({
                       }
 
                       return (
-                        <tr key={i}>
-                          <td className="px-3 py-2">{row.nombres}</td>
-                          <td className="px-3 py-2">{row.apellidos}</td>
-                          <td className="px-3 py-2">{row.estaca_distrito_mision}</td>
-                          <td className="px-3 py-2">{row.celular}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex flex-col gap-1">
-                              {statusBadge}
-                              {match && (
-                                <span className="text-xs text-slate-400">
-                                  Coincide por {match.matchedBy}
-                                </span>
+                        <Fragment key={i}>
+                          <tr>
+                            <td className="px-3 py-2">{row.nombres}</td>
+                            <td className="px-3 py-2">{row.apellidos}</td>
+                            <td className="px-3 py-2">{row.estaca_distrito_mision}</td>
+                            <td className="px-3 py-2">{row.celular}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-col gap-1">
+                                {statusBadge}
+                                {match && (
+                                  <span className="text-xs text-slate-400">
+                                    Coincide por {match.matchedBy}
+                                  </span>
+                                )}
+                                {hasChanges && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRow(i)}
+                                    className="text-left text-xs text-blue-600 hover:underline"
+                                  >
+                                    {isExpanded ? "Ocultar diferencias" : "Ver diferencias"}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              {!match ? (
+                                <span className="text-xs text-slate-400">Insertar</span>
+                              ) : !hasChanges ? (
+                                <span className="text-xs text-slate-400">Omitir</span>
+                              ) : (
+                                <Select
+                                  value={match.action}
+                                  onChange={(e) => setAction(i, e.target.value as DuplicateAction)}
+                                  className="text-xs"
+                                >
+                                  <option value="skip">Omitir</option>
+                                  <option value="update">Actualizar</option>
+                                  <option value="duplicate">Duplicar</option>
+                                </Select>
                               )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            {!match ? (
-                              <span className="text-xs text-slate-400">Insertar</span>
-                            ) : !hasChanges ? (
-                              <span className="text-xs text-slate-400">Omitir</span>
-                            ) : (
-                              <Select
-                                value={match.action}
-                                onChange={(e) => setAction(i, e.target.value as DuplicateAction)}
-                                className="text-xs"
-                              >
-                                <option value="skip">Omitir</option>
-                                <option value="update">Actualizar</option>
-                                <option value="duplicate">Duplicar</option>
-                              </Select>
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                          {isExpanded && changes.length > 0 && (
+                            <tr className="bg-slate-50/80">
+                              <td colSpan={6} className="px-3 py-3">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-slate-700">
+                                    Diferencias encontradas ({changes.length}):
+                                  </p>
+                                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                    {changes.map((c, j) => (
+                                      <div
+                                        key={j}
+                                        className="rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                                      >
+                                        <p className="font-medium text-slate-900">
+                                          {FIELD_LABELS[c.key] || c.key}
+                                        </p>
+                                        <div className="mt-1 flex flex-col gap-0.5">
+                                          <p className="text-red-600 line-through">
+                                            Actual: {c.oldValue}
+                                          </p>
+                                          <p className="text-emerald-600">
+                                            Nuevo: {c.newValue}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>

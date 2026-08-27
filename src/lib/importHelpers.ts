@@ -71,17 +71,33 @@ export function findDuplicates(
   });
 }
 
-export function hasMeaningfulChanges(
+export interface FieldChange {
+  key: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export function getMeaningfulChanges(
   existing: any,
   row: Partial<AsistenteInsert>
-): boolean {
+): FieldChange[] {
+  const changes: FieldChange[] = [];
   const keys = Object.keys(row) as (keyof AsistenteInsert)[];
   for (const key of keys) {
     const a = String(existing[key] ?? "").trim();
     const b = String(row[key] ?? "").trim();
-    if (a !== b) return true;
+    if (a !== b) {
+      changes.push({ key, oldValue: a || "(vacío)", newValue: b || "(vacío)" });
+    }
   }
-  return false;
+  return changes;
+}
+
+export function hasMeaningfulChanges(
+  existing: any,
+  row: Partial<AsistenteInsert>
+): boolean {
+  return getMeaningfulChanges(existing, row).length > 0;
 }
 
 /**
