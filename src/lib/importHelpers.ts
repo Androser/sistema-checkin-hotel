@@ -243,8 +243,6 @@ function parseWithOffset(
   return {
     nombres: finalNombres,
     apellidos: finalApellidos,
-    cedula: null,
-    documento_pendiente: true,
     rol,
     rol_descripcion,
     estaca_distrito_mision: estaca,

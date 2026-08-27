@@ -185,11 +185,24 @@ export function AsistenteModal({
 
       for (const item of preview) {
         if (!item.match) {
-          insert.push(item.row);
+          insert.push({ ...item.row, documento_pendiente: true });
         } else if (item.match.action === "update") {
-          update.push({ id: item.match.existing.id, data: item.row });
+          // Solo actualizar campos que tengan un valor significativo.
+          // Esto evita borrar datos existentes (como cédulas) cuando
+          // el pegado no incluye esa información.
+          const data: Partial<Asistente> = {};
+          for (const [key, value] of Object.entries(item.row)) {
+            const isEmpty =
+              value === null ||
+              value === undefined ||
+              (typeof value === "string" && value.trim() === "");
+            if (!isEmpty) {
+              (data as any)[key] = value;
+            }
+          }
+          update.push({ id: item.match.existing.id, data });
         } else if (item.match.action === "duplicate") {
-          insert.push(item.row);
+          insert.push({ ...item.row, documento_pendiente: true });
         }
       }
 
