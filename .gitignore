@@ -43,5 +43,8 @@ next-env.d.ts
 # generated qr codes
 /public/qr-codes
 
+# generated reports
+asignaciones-habitaciones-*.xlsx
+
 # local env
 .env.local
