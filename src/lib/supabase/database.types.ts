@@ -12,6 +12,7 @@ export interface Database {
       asistentes: {
         Row: {
           id: string;
+          id_externo: string | null;
           nombres: string;
           apellidos: string;
           cedula: string | null;
@@ -48,6 +49,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          id_externo?: string | null;
           nombres: string;
           apellidos: string;
           cedula?: string | null;
@@ -84,6 +86,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          id_externo?: string | null;
           nombres?: string;
           apellidos?: string;
           cedula?: string | null;

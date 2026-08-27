@@ -16,7 +16,7 @@ export type DuplicateAction = "update" | "skip" | "duplicate";
 
 export interface DuplicateMatch {
   existing: any;
-  matchedBy: "cédula" | "celular" | "nombre";
+  matchedBy: "ID externo" | "cédula" | "celular" | "nombre";
   action: DuplicateAction;
 }
 
@@ -50,17 +50,29 @@ export function findDuplicates(
   existing: any[]
 ): ParsedRow[] {
   return rows.map((row) => {
+    const idExterno = row.id_externo ? String(row.id_externo).trim() : "";
     const cedula = normalizeId(row.cedula || "");
     const celular = normalizePhone(row.celular || "");
     const name = normalizeName(`${row.nombres || ""} ${row.apellidos || ""}`);
 
     for (const ex of existing) {
+      // Prioridad 1: ID externo (sincronización con tabla origen)
+      if (
+        idExterno &&
+        ex.id_externo &&
+        String(ex.id_externo).trim() === idExterno
+      ) {
+        return { row, match: { existing: ex, matchedBy: "ID externo", action: "skip" } };
+      }
+      // Prioridad 2: cédula
       if (cedula && normalizeId(ex.cedula || "") === cedula) {
         return { row, match: { existing: ex, matchedBy: "cédula", action: "skip" } };
       }
+      // Prioridad 3: celular
       if (celular && normalizePhone(ex.celular || "") === celular) {
         return { row, match: { existing: ex, matchedBy: "celular", action: "skip" } };
       }
+      // Prioridad 4: nombre completo
       const existingName = normalizeName(`${ex.nombres || ""} ${ex.apellidos || ""}`);
       if (existingName && existingName === name && name.length > 3) {
         return { row, match: { existing: ex, matchedBy: "nombre", action: "skip" } };
@@ -69,6 +81,31 @@ export function findDuplicates(
 
     return { row, match: null };
   });
+}
+
+export interface MissingRow {
+  existing: any;
+  action: "ignore" | "cancel" | "delete";
+}
+
+export function findMissingFromSource(
+  rows: Partial<AsistenteInsert>[],
+  existing: any[]
+): MissingRow[] {
+  const sourceIds = new Set(
+    rows
+      .map((r) => (r.id_externo ? String(r.id_externo).trim() : ""))
+      .filter(Boolean)
+  );
+
+  return existing
+    .filter((ex) => {
+      // Solo considerar filas que tienen id_externo en BD
+      if (!ex.id_externo) return false;
+      const exId = String(ex.id_externo).trim();
+      return !sourceIds.has(exId);
+    })
+    .map((ex) => ({ existing: ex, action: "ignore" as const }));
 }
 
 export interface FieldChange {
@@ -221,6 +258,9 @@ function parseWithOffset(
 
   const get = (index: number) => columns[index + offset] || "";
 
+  // El ID externo viene en la primera columna cuando hay offset (formato Forms)
+  const id_externo = offset === 3 ? columns[0]?.trim() || null : null;
+
   const nombres = get(0);
   const apellidos = get(1);
   const nombrePreferencia = get(2);
@@ -257,6 +297,7 @@ function parseWithOffset(
   const { rol, rol_descripcion } = parseRol(pagoRolRaw);
 
   return {
+    id_externo,
     nombres: finalNombres,
     apellidos: finalApellidos,
     rol,
@@ -279,6 +320,7 @@ function parseWithOffset(
 function scoreParse(result: Partial<AsistenteInsert> | null): number {
   if (!result) return 0;
   let score = 0;
+  if (result.id_externo) score += 3;
   if (result.nombres) score += 2;
   if (result.apellidos) score += 2;
   if (result.estaca_distrito_mision) score += 1;

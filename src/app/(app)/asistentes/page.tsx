@@ -225,6 +225,8 @@ export default function AsistentesPage() {
   const handleSaveMultiple = async (data: {
     insert: Partial<Asistente>[];
     update: { id: string; data: Partial<Asistente> }[];
+    cancel?: string[];
+    delete?: string[];
   }) => {
     setSaveError(null);
     try {
@@ -241,6 +243,22 @@ export default function AsistentesPage() {
           .from("asistentes")
           .update(cleaned as any)
           .eq("id", item.id);
+        if (error) throw error;
+      }
+
+      if (data.cancel && data.cancel.length > 0) {
+        const { error } = await supabase
+          .from("asistentes")
+          .update({ cancelado: true } as any)
+          .in("id", data.cancel);
+        if (error) throw error;
+      }
+
+      if (data.delete && data.delete.length > 0) {
+        const { error } = await supabase
+          .from("asistentes")
+          .delete()
+          .in("id", data.delete);
         if (error) throw error;
       }
 
@@ -368,6 +386,7 @@ export default function AsistentesPage() {
   const exportarCSV = () => {
     const headers = [
       "ID",
+      "IDExterno",
       "Nombres",
       "Apellidos",
       "Cedula",
@@ -401,6 +420,7 @@ export default function AsistentesPage() {
 
     const rows = filtered.map((a) => [
       a.id,
+      a.id_externo || "",
       a.nombres,
       a.apellidos,
       a.cedula || "",

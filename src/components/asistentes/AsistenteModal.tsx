@@ -20,8 +20,10 @@ import {
   findDuplicates,
   hasMeaningfulChanges,
   getMeaningfulChanges,
+  findMissingFromSource,
   ParsedRow,
   DuplicateAction,
+  MissingRow,
 } from "@/lib/importHelpers";
 
 interface AsistenteModalProps {
@@ -30,7 +32,12 @@ interface AsistenteModalProps {
   asistente: Asistente | null;
   existingAsistentes?: Asistente[];
   onSave: (data: Partial<Asistente>) => void;
-  onSaveMultiple?: (data: { insert: Partial<Asistente>[]; update: { id: string; data: Partial<Asistente> }[] }) => void;
+  onSaveMultiple?: (data: {
+    insert: Partial<Asistente>[];
+    update: { id: string; data: Partial<Asistente> }[];
+    cancel?: string[];
+    delete?: string[];
+  }) => void;
   saveError?: string | null;
 }
 
@@ -107,6 +114,7 @@ export function AsistenteModal({
   const [showDebug, setShowDebug] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [missingRows, setMissingRows] = useState<MissingRow[]>([]);
 
   useEffect(() => {
     if (saveError) setLocalError(saveError);
@@ -119,6 +127,7 @@ export function AsistenteModal({
       setPreview(null);
       setPasteErrors([]);
       setExpandedRows(new Set());
+      setMissingRows([]);
       if (asistente) {
         setForm({
           nombres: asistente.nombres || "",
@@ -175,6 +184,7 @@ export function AsistenteModal({
     setDebugInfo(null);
     setShowDebug(false);
     setExpandedRows(new Set());
+    setMissingRows([]);
     const result = parseTablaPegada(pasteText);
     setDebugInfo(result.debug || null);
     if (result.rows.length === 0) {
@@ -187,7 +197,9 @@ export function AsistenteModal({
       return;
     }
     const withDuplicates = findDuplicates(result.rows, existingAsistentes || []);
+    const missing = findMissingFromSource(result.rows, existingAsistentes || []);
     setPreview(withDuplicates);
+    setMissingRows(missing);
     setPasteErrors(result.errors);
   };
 
@@ -205,14 +217,17 @@ export function AsistenteModal({
   };
 
   const handleSavePasted = async () => {
-    if (!preview || preview.length === 0 || !onSaveMultiple) return;
+    if ((!preview || preview.length === 0) && missingRows.length === 0) return;
+    if (!onSaveMultiple) return;
     setSaving(true);
     setLocalError(null);
     try {
       const insert: Partial<Asistente>[] = [];
       const update: { id: string; data: Partial<Asistente> }[] = [];
+      const cancel: string[] = [];
+      const deleteIds: string[] = [];
 
-      for (const item of preview) {
+      for (const item of preview || []) {
         if (!item.match) {
           insert.push({ ...item.row, documento_pendiente: true });
         } else if (item.match.action === "update") {
@@ -235,7 +250,15 @@ export function AsistenteModal({
         }
       }
 
-      await onSaveMultiple({ insert, update });
+      for (const item of missingRows) {
+        if (item.action === "cancel") {
+          cancel.push(item.existing.id);
+        } else if (item.action === "delete") {
+          deleteIds.push(item.existing.id);
+        }
+      }
+
+      await onSaveMultiple({ insert, update, cancel, delete: deleteIds });
     } finally {
       setSaving(false);
     }
@@ -260,6 +283,18 @@ export function AsistenteModal({
       else next.add(index);
       return next;
     });
+  };
+
+  const setMissingAction = (index: number, action: MissingRow["action"]) => {
+    setMissingRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], action };
+      return next;
+    });
+  };
+
+  const setAllMissingActions = (action: MissingRow["action"]) => {
+    setMissingRows((prev) => prev.map((item) => ({ ...item, action })));
   };
 
   const setAllActions = (action: DuplicateAction) => {
@@ -826,7 +861,92 @@ export function AsistenteModal({
             </div>
           )}
 
-          {preview && preview.length > 0 && (
+          {missingRows.length > 0 && (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-red-900">
+                    Asistentes en BD que no aparecen en la tabla pegada
+                  </h4>
+                  <p className="text-xs text-red-700">
+                    {missingRows.filter((m) => m.existing.cancelado).length} ya están cancelados.
+                    {" "}
+                    {missingRows.filter((m) => !m.existing.cancelado).length} están activos.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllMissingActions("ignore")}
+                    type="button"
+                  >
+                    Ignorar todos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllMissingActions("cancel")}
+                    type="button"
+                  >
+                    Cancelar todos
+                  </Button>
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-auto rounded-lg border border-red-200 bg-white">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-red-50 text-red-900">
+                    <tr>
+                      <th className="px-3 py-2">Nombres</th>
+                      <th className="px-3 py-2">Apellidos</th>
+                      <th className="px-3 py-2">Estaca</th>
+                      <th className="px-3 py-2">Estado BD</th>
+                      <th className="px-3 py-2">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {missingRows.map((item, i) => {
+                      const a = item.existing;
+                      return (
+                        <tr key={i} className={a.cancelado ? "bg-slate-50" : ""}>
+                          <td className="px-3 py-2">{a.nombres}</td>
+                          <td className="px-3 py-2">{a.apellidos}</td>
+                          <td className="px-3 py-2">{a.estaca_distrito_mision}</td>
+                          <td className="px-3 py-2">
+                            {a.cancelado ? (
+                              <Badge variant="secondary">Cancelado</Badge>
+                            ) : (
+                              <Badge variant="success">Activo</Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {a.cancelado ? (
+                              <span className="text-xs text-slate-400">Ignorar</span>
+                            ) : (
+                              <Select
+                                value={item.action}
+                                onChange={(e) =>
+                                  setMissingAction(i, e.target.value as MissingRow["action"])
+                                }
+                                className="text-xs"
+                              >
+                                <option value="ignore">Ignorar</option>
+                                <option value="cancel">Cancelar</option>
+                                <option value="delete">Eliminar</option>
+                              </Select>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {(preview && preview.length > 0) || missingRows.length > 0 ? (
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={onClose} type="button">
                 Cancelar
@@ -842,19 +962,28 @@ export function AsistenteModal({
                   : (() => {
                       let insert = 0;
                       let update = 0;
-                      for (const item of preview) {
+                      let cancel = 0;
+                      let del = 0;
+                      for (const item of preview || []) {
                         if (!item.match) insert++;
                         else if (item.match.action === "update") update++;
                         else if (item.match.action === "duplicate") insert++;
                       }
-                      if (update > 0) {
-                        return `Guardar: ${insert} nuevo(s) / ${update} actualizado(s)`;
+                      for (const item of missingRows) {
+                        if (item.action === "cancel") cancel++;
+                        else if (item.action === "delete") del++;
                       }
-                      return `Guardar ${insert} asistente(s)`;
+                      const parts: string[] = [];
+                      if (insert > 0) parts.push(`${insert} nuevo(s)`);
+                      if (update > 0) parts.push(`${update} actualizado(s)`);
+                      if (cancel > 0) parts.push(`${cancel} cancelado(s)`);
+                      if (del > 0) parts.push(`${del} eliminado(s)`);
+                      if (parts.length === 0) return "Guardar (sin cambios)";
+                      return `Guardar: ${parts.join(" / ")}`;
                     })()}
               </Button>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </Modal>

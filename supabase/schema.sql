@@ -7,6 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Tabla principal de asistentes
 CREATE TABLE IF NOT EXISTS public.asistentes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id_externo TEXT UNIQUE,
   nombres TEXT NOT NULL,
   apellidos TEXT NOT NULL,
   cedula TEXT UNIQUE,
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS public.asistentes (
 
 -- Índices para búsquedas frecuentes
 CREATE INDEX IF NOT EXISTS idx_asistentes_cedula ON public.asistentes(cedula);
+CREATE INDEX IF NOT EXISTS idx_asistentes_id_externo ON public.asistentes(id_externo);
 CREATE INDEX IF NOT EXISTS idx_asistentes_qr_token ON public.asistentes(qr_token);
 CREATE INDEX IF NOT EXISTS idx_asistentes_estaca ON public.asistentes(estaca_distrito_mision);
 CREATE INDEX IF NOT EXISTS idx_asistentes_checkin ON public.asistentes(estado_checkin);
