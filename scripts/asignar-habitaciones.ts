@@ -273,8 +273,8 @@ async function main() {
     const beds = usedBeds.get(room.numero) || [];
     for (let i = 1; i <= room.capacidad; i++) {
       const bed = String(i);
-      // Suites: allow 2 per bed; others 1 per bed
-      const maxPerBed = room.tipoRaw.toUpperCase().includes("SUITE") ? 2 : 1;
+      // Suites de pareja: allow 2 per bed; others 1 per bed
+      const maxPerBed = room.isSuite ? 2 : 1;
       const count = beds.filter((b) => b === bed).length;
       if (count < maxPerBed) return bed;
     }

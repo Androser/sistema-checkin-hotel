@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Bed, Users, Search, AlertCircle } from "lucide-react";
+import { Bed, Users, Search, AlertCircle, FileDown, FileUp, RefreshCw } from "lucide-react";
 import { useAsistentes } from "@/hooks/useAsistentes";
 import { Asistente } from "@/lib/types";
 import { HABITACIONES, Habitacion } from "@/lib/habitaciones";
@@ -34,6 +34,31 @@ export default function HabitacionesPage() {
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleSync = async (action: "import" | "export") => {
+    setSyncing(action);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/sync-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSyncMessage({ type: "success", text: data.message });
+        refetch();
+      } else {
+        setSyncMessage({ type: "error", text: data.error || "Ocurrió un error al sincronizar." });
+      }
+    } catch (err: any) {
+      setSyncMessage({ type: "error", text: "Error de red al conectar con el servidor." });
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const supabase = createClient();
 
@@ -157,11 +182,54 @@ export default function HabitacionesPage() {
             Edita quién duerme en cada habitación y cama
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Bed className="h-5 w-5" />
-          {activos.length - sinHabitacion.length} / {activos.length} asignados
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-slate-500 mr-2">
+            <Bed className="h-5 w-5" />
+            {activos.length - sinHabitacion.length} / {activos.length} asignados
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSync("import")}
+            disabled={syncing !== null}
+            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+          >
+            {syncing === "import" ? (
+              <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-1.5 h-4 w-4" />
+            )}
+            {syncing === "import" ? "Importando..." : "Importar de Sheets"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSync("export")}
+            disabled={syncing !== null}
+            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          >
+            {syncing === "export" ? (
+              <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <FileUp className="mr-1.5 h-4 w-4" />
+            )}
+            {syncing === "export" ? "Exportando..." : "Exportar a Sheets"}
+          </Button>
         </div>
       </motion.div>
+
+      {syncMessage && (
+        <div
+          className={`rounded-lg border p-4 text-sm flex items-start gap-2 ${
+            syncMessage.type === "success"
+              ? "border-emerald-100 bg-emerald-50 text-emerald-800"
+              : "border-red-100 bg-red-50 text-red-700"
+          }`}
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>{syncMessage.text}</div>
+        </div>
+      )}
 
       {saveError && (
         <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">

@@ -48,3 +48,7 @@ asignaciones-habitaciones-*.xlsx
 
 # local env
 .env.local
+
+# Google Service Account keys
+*-*.json
+
