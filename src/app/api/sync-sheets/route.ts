@@ -202,9 +202,11 @@ export async function POST(request: NextRequest) {
               const doc = docs[j] || "";
 
               // Try matching by doc first, then fuzzy match name
-              let matched = candidates.find((c) => doc && c.cedula === doc.replace(/\D/g, "").trim());
+              let matched: { id: any; fullName: string; cedula?: any } | null | undefined =
+                candidates.find((c) => doc && c.cedula === doc.replace(/\D/g, "").trim());
               if (!matched) {
-                matched = findBestMatch(name, candidates, 0.45);
+                const fuzzy = findBestMatch(name, candidates, 0.45);
+                if (fuzzy) matched = { id: fuzzy.id, fullName: fuzzy.fullName };
               }
 
               if (matched) {
