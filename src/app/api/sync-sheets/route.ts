@@ -6,6 +6,16 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
@@ -146,7 +156,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseUrl || !serviceRoleKey || !SHEET_ID) {
       return NextResponse.json(
         { error: "Configuration variables missing." },
-        { status: 500 }
+        { status: 500, headers: CORS_HEADERS }
       );
     }
 
@@ -160,7 +170,7 @@ export async function POST(request: NextRequest) {
       .eq("cancelado", false);
 
     if (dbErr || !asistentes) {
-      return NextResponse.json({ error: "Failed to read database." }, { status: 500 });
+      return NextResponse.json({ error: "Failed to read database." }, { status: 500, headers: CORS_HEADERS });
     }
 
     // Fetch Google Sheet values
@@ -255,7 +265,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `Importados ${updates.filter(u => u.tipo_alojamiento !== null).length} asignaciones y desasignados ${updates.filter(u => u.tipo_alojamiento === null).length} asistentes.`,
-      });
+      }, { headers: CORS_HEADERS });
 
     } else if (action === "export") {
       // 2. Supabase -> Google Sheets (incorporando cédulas actualizadas en la DB)
@@ -316,13 +326,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Google Sheets actualizado con los datos actuales de la base de datos.",
-      });
+      }, { headers: CORS_HEADERS });
 
     } else {
-      return NextResponse.json({ error: "Invalid action." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid action." }, { status: 400, headers: CORS_HEADERS });
     }
   } catch (err: any) {
     console.error("Error in sync-sheets API:", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Internal server error" },
+      { status: 500, headers: CORS_HEADERS }
+    );
   }
 }
